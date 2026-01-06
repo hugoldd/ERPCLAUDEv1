@@ -1,36 +1,134 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ERP Gestion de Projet v1.0
 
-## Getting Started
+Solution de gestion de projet pour la fonction publique territoriale française.
 
-First, run the development server:
+## 🚀 Fonctionnalités v1.0
 
+### Axe 1 : Transformation commande et affectation projet
+- ✅ Gestion des clients (CRUD complet)
+- ✅ Contacts multiples par client
+- ✅ Notes clients avec historique
+- ✅ Création de commandes avec prestations
+- ✅ Transformation automatique commande → projet
+- ✅ Bannette d'affectation pour chef de service
+- ✅ Affectation projet → Directeur de Projet
+
+## 🛠️ Stack Technique
+
+- **Frontend/Backend**: Next.js 14 (TypeScript)
+- **Base de données**: Supabase (PostgreSQL)
+- **Styling**: Tailwind CSS
+- **Hébergement**: Vercel (gratuit)
+
+## 📦 Installation
+
+### Prérequis
+- Node.js (v18+)
+- Compte Supabase
+- Compte GitHub (pour le versionning)
+
+### Étapes
+
+1. **Cloner le projet**
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/votre-username/ERPCLAUDEv1.git
+cd ERPCLAUDEv1
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. **Installer les dépendances**
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. **Configurer Supabase**
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Créez un fichier `.env.local` à la racine :
+```env
+NEXT_PUBLIC_SUPABASE_URL=votre_url_supabase
+NEXT_PUBLIC_SUPABASE_ANON_KEY=votre_cle_anon
+```
 
-## Learn More
+4. **Initialiser la base de données**
 
-To learn more about Next.js, take a look at the following resources:
+Dans Supabase SQL Editor, exécutez :
+```bash
+database/migrations/001_initial_setup.sql
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+5. **Lancer le projet**
+```bash
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Ouvrez [http://localhost:3000](http://localhost:3000)
 
-## Deploy on Vercel
+## 📁 Structure du projet
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+erp-gestion-projet/
+├── app/                      # Pages Next.js
+│   ├── page.tsx             # Accueil
+│   ├── clients/             # Gestion clients
+│   ├── commandes/           # Création commandes
+│   └── bannette/            # Affectation projets
+├── lib/
+│   └── supabase.ts          # Client Supabase
+├── database/
+│   ├── migrations/          # Scripts SQL versionnés
+│   └── backups/             # Sauvegardes
+└── .env.local              # Configuration (non versionné)
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🗄️ Schéma de base de données
+
+### Tables principales
+- `utilisateurs` : Directeurs de projet et chefs de service
+- `clients` : Clients (collectivités territoriales)
+- `contacts_clients` : Contacts multiples par client
+- `notes_clients` : Notes avec historique
+- `commandes` : Commandes depuis Salesforce
+- `prestations` : Lignes de commande (logiciel, maintenance, etc.)
+- `projets` : Projets générés depuis commandes
+- `projet_prestations` : Liaison projets-prestations
+
+## 🎨 Interface
+
+- **Mode dark** (couleurs personnalisées)
+- Navigation fluide entre modules
+- Recherche et filtres
+- Responsive design
+
+## 📝 Prochaines versions
+
+### v1.1 - Catalogues (en cours)
+- Catalogue de prestations
+- Packs de prestations
+- Compétences requises
+
+### v1.2 - Dashboard DP
+- Vue projets affectés
+- Suivi avancement
+
+### v1.3 - Planification
+- Gestion des tâches
+- Timeline/Gantt
+
+## 🤝 Contribution
+
+1. Créez une branche (`git checkout -b feature/nouvelle-fonctionnalite`)
+2. Committez vos changements (`git commit -m 'Ajout fonctionnalité X'`)
+3. Poussez la branche (`git push origin feature/nouvelle-fonctionnalite`)
+4. Ouvrez une Pull Request
+
+## 📄 Licence
+
+Projet privé - Tous droits réservés
+
+## 📧 Contact
+
+Pour toute question : [votre-email]
+
+---
+
+**Version actuelle** : v1.0  
+**Dernière mise à jour** : 06/01/2026
