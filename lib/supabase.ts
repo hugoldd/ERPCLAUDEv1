@@ -6,7 +6,9 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Types TypeScript pour nos tables
+// ============================================
+// TYPES EXISTANTS
+// ============================================
 export interface Utilisateur {
   id: string;
   email: string;
@@ -63,4 +65,123 @@ export interface Projet {
   priorite: 'basse' | 'normale' | 'haute' | 'urgente';
   budget_total: number;
   notes_affectation?: string;
+}
+
+// ============================================
+// NOUVEAUX TYPES - COMPÉTENCES
+// ============================================
+export interface Competence {
+  id: string;
+  code: string;
+  nom: string;
+  description?: string;
+  categorie: 'technique' | 'fonctionnel' | 'metier' | 'soft_skills';
+  niveau_requis: 'debutant' | 'intermediaire' | 'expert';
+  actif: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Consultant {
+  id: string;
+  nom: string;
+  prenom: string;
+  email: string;
+  telephone?: string;
+  statut: 'actif' | 'disponible' | 'en_mission' | 'inactif';
+  type_contrat?: 'interne' | 'freelance' | 'sous_traitant';
+  date_entree?: string;
+  date_sortie?: string;
+  tjm?: number;
+  disponibilite_pct: number;
+  photo_url?: string;
+  cv_url?: string;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ConsultantCompetence {
+  id: string;
+  consultant_id: string;
+  competence_id: string;
+  niveau_maitrise: 'debutant' | 'intermediaire' | 'expert';
+  annees_experience?: number;
+  date_acquisition?: string;
+  derniere_utilisation?: string;
+  certification: boolean;
+  nom_certification?: string;
+  date_certification?: string;
+  organisme_certification?: string;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PrestationCompetence {
+  id: string;
+  prestation_id: string;
+  competence_id: string;
+  niveau_requis: 'debutant' | 'intermediaire' | 'expert';
+  priorite: 'essentielle' | 'importante' | 'souhaitee';
+  obligatoire: boolean;
+  created_at?: string;
+}
+
+export interface ProjetCompetence {
+  id: string;
+  projet_id: string;
+  competence_id: string;
+  niveau_requis: 'debutant' | 'intermediaire' | 'expert';
+  priorite: 'essentielle' | 'importante' | 'souhaitee';
+  obligatoire: boolean;
+  created_at?: string;
+}
+
+export interface ProjetConsultant {
+  id: string;
+  projet_id: string;
+  consultant_id: string;
+  date_debut: string;
+  date_fin?: string;
+  charge_pct: number;
+  role?: string;
+  tjm_facture?: number;
+  statut: 'actif' | 'termine' | 'suspendu';
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ============================================
+// TYPES POUR LES VUES
+// ============================================
+export interface ConsultantAvecCompetences extends Consultant {
+  competences?: Array<{
+    competence: Competence;
+    niveau_maitrise: string;
+    annees_experience?: number;
+    certification: boolean;
+  }>;
+}
+
+export interface ProjetAvecCompetences extends Projet {
+  competences_requises?: Array<{
+    competence: Competence;
+    niveau_requis: string;
+    priorite: string;
+    obligatoire: boolean;
+  }>;
+}
+
+export interface MatchingConsultant {
+  projet_id: string;
+  consultant_id: string;
+  nom: string;
+  prenom: string;
+  statut: string;
+  disponibilite_pct: number;
+  competences_requises: number;
+  competences_matchees: number;
+  taux_matching: number;
 }
