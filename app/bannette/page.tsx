@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import AppLayout from '@/components/AppLayout';
+import { useTheme } from '@/context/ThemeContext';
 
 interface ProjetBannette {
   id: string;
@@ -22,6 +24,7 @@ interface DP {
 }
 
 export default function Bannette() {
+  const { colors } = useTheme();
   const [projets, setProjets] = useState<ProjetBannette[]>([]);
   const [dps, setDps] = useState<DP[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,71 +116,91 @@ export default function Bannette() {
 
   const getPrioriteColor = (priorite: string) => {
     switch (priorite) {
-      case 'urgente': return 'border-l-red-500';
-      case 'haute': return 'border-l-orange-500';
-      case 'normale': return 'border-l-[#2196F3]';
-      case 'basse': return 'border-l-gray-500';
-      default: return 'border-l-gray-500';
+      case 'urgente': return colors.danger;
+      case 'haute': return '#f59e0b';
+      case 'normale': return colors.accent;
+      case 'basse': return colors.textSecondary;
+      default: return colors.textSecondary;
     }
   };
 
   const getPrioriteBadge = (priorite: string) => {
-    switch (priorite) {
-      case 'urgente': return 'bg-red-500/20 text-red-300 border-red-500';
-      case 'haute': return 'bg-orange-500/20 text-orange-300 border-orange-500';
-      case 'normale': return 'bg-[#2196F3]/20 text-[#2196F3] border-[#2196F3]';
-      case 'basse': return 'bg-gray-500/20 text-gray-300 border-gray-500';
-      default: return 'bg-gray-500/20 text-gray-300 border-gray-500';
-    }
+    const color = getPrioriteColor(priorite);
+    return {
+      backgroundColor: `${color}20`,
+      color: color,
+      borderColor: color
+    };
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#1F2836] flex items-center justify-center">
-        <div className="text-xl text-[#FFFFFF]">Chargement...</div>
-      </div>
+      <AppLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-xl" style={{ color: colors.text }}>Chargement...</div>
+        </div>
+      </AppLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#1F2836] p-8">
+    <AppLayout>
       <div className="max-w-7xl mx-auto">
-        {/* Bouton retour */}
-        <Link 
-          href="/" 
-          className="inline-flex items-center gap-2 text-[#2196F3] hover:text-[#FFFFFF] mb-6 transition-colors"
-        >
-          <span className="text-xl">🏠</span>
-          <span className="font-medium">Retour à l'accueil</span>
-        </Link>
-
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-[#FFFFFF]">Bannette - Projets à affecter</h1>
-          <div className="text-lg font-semibold text-[#FFFFFF] bg-[#2E3744] px-4 py-2 rounded border border-[#FFFFFF26]">
+          <h1 className="text-3xl font-bold" style={{ color: colors.text }}>
+            Bannette - Projets à affecter
+          </h1>
+          <div 
+            className="text-lg font-semibold px-4 py-2 rounded"
+            style={{ 
+              backgroundColor: colors.card,
+              border: `1px solid ${colors.border}`,
+              color: colors.text
+            }}
+          >
             {projets.length} projet{projets.length > 1 ? 's' : ''} en attente
           </div>
         </div>
 
         {projets.length === 0 ? (
-          <div className="bg-[#2E3744] rounded-lg border border-[#FFFFFF26] p-12 text-center">
-            <p className="text-xl text-[#FFFFFF]">Aucun projet en attente d'affectation</p>
+          <div 
+            className="rounded-lg p-12 text-center"
+            style={{ 
+              backgroundColor: colors.card,
+              border: `1px solid ${colors.border}`
+            }}
+          >
+            <p className="text-xl" style={{ color: colors.text }}>
+              Aucun projet en attente d'affectation
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
             {projets.map((projet) => (
               <div
                 key={projet.id}
-                className={`bg-[#2E3744] rounded-lg border border-[#FFFFFF26] p-6 border-l-4 ${getPrioriteColor(projet.priorite)}`}
+                className="rounded-lg p-6 border-l-4"
+                style={{ 
+                  backgroundColor: colors.card,
+                  border: `1px solid ${colors.border}`,
+                  borderLeftColor: getPrioriteColor(projet.priorite),
+                  borderLeftWidth: '4px'
+                }}
               >
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h2 className="text-xl font-bold text-[#FFFFFF]">{projet.titre}</h2>
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold uppercase border ${getPrioriteBadge(projet.priorite)}`}>
+                      <h2 className="text-xl font-bold" style={{ color: colors.text }}>
+                        {projet.titre}
+                      </h2>
+                      <span 
+                        className="px-3 py-1 rounded-full text-xs font-semibold uppercase border"
+                        style={getPrioriteBadge(projet.priorite)}
+                      >
                         {projet.priorite}
                       </span>
                     </div>
-                    <div className="text-[#FFFFFF] space-y-1">
+                    <div className="space-y-1" style={{ color: colors.text }}>
                       <p><strong>N° Projet:</strong> {projet.numero_projet}</p>
                       <p><strong>Client:</strong> {projet.client?.nom}</p>
                       <p><strong>Date création:</strong> {new Date(projet.date_creation).toLocaleDateString('fr-FR')}</p>
@@ -187,12 +210,19 @@ export default function Bannette() {
                 </div>
 
                 <div className="mb-4">
-                  <h3 className="font-semibold mb-2 text-[#FFFFFF]">Prestations:</h3>
+                  <h3 className="font-semibold mb-2" style={{ color: colors.text }}>
+                    Prestations:
+                  </h3>
                   <div className="flex flex-wrap gap-2">
                     {projet.prestations.map((p, i) => (
                       <span
                         key={i}
-                        className="bg-[#1F2836] border border-[#FFFFFF26] px-3 py-1 rounded text-sm text-[#FFFFFF]"
+                        className="px-3 py-1 rounded text-sm"
+                        style={{ 
+                          backgroundColor: colors.background,
+                          border: `1px solid ${colors.border}`,
+                          color: colors.text
+                        }}
                       >
                         {p.type_prestation}: {p.libelle}
                       </span>
@@ -200,12 +230,22 @@ export default function Bannette() {
                   </div>
                 </div>
 
-                <div className="border-t border-[#FFFFFF26] pt-4">
-                  <label className="block text-sm font-medium mb-2 text-[#FFFFFF]">Affecter à un DP:</label>
+                <div 
+                  className="border-t pt-4"
+                  style={{ borderColor: colors.border }}
+                >
+                  <label className="block text-sm font-medium mb-2" style={{ color: colors.text }}>
+                    Affecter à un DP:
+                  </label>
                   <div className="flex gap-2">
                     <select
                       id={`dp-select-${projet.id}`}
-                      className="flex-1 bg-[#1F2836] border border-[#FFFFFF26] rounded px-3 py-2 text-[#FFFFFF]"
+                      className="flex-1 rounded px-3 py-2"
+                      style={{ 
+                        backgroundColor: colors.background,
+                        border: `1px solid ${colors.border}`,
+                        color: colors.text
+                      }}
                       defaultValue=""
                     >
                       <option value="" disabled>Sélectionner un DP...</option>
@@ -225,7 +265,10 @@ export default function Bannette() {
                         }
                       }}
                       disabled={affectationEnCours === projet.id}
-                      className="bg-[#2196F3] text-white px-6 py-2 rounded font-semibold hover:bg-[#1976D2] disabled:bg-gray-400 transition-colors"
+                      className="px-6 py-2 rounded font-semibold transition-colors text-white disabled:opacity-50"
+                      style={{ backgroundColor: colors.accent }}
+                      onMouseEnter={(e) => !affectationEnCours && (e.currentTarget.style.opacity = '0.9')}
+                      onMouseLeave={(e) => !affectationEnCours && (e.currentTarget.style.opacity = '1')}
                     >
                       {affectationEnCours === projet.id ? 'Affectation...' : 'Affecter'}
                     </button>
@@ -236,6 +279,6 @@ export default function Bannette() {
           </div>
         )}
       </div>
-    </div>
+    </AppLayout>
   );
 }
