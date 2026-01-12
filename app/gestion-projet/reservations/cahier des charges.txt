@@ -1,0 +1,615 @@
+Cahier des Charges - Module de Réservation et Gestion de Projet
+Vue d'ensemble
+Module permettant la planification intelligente des prestations vendues en croisant disponibilités, compétences et contraintes clients/consultants.
+
+1. AFFICHAGE ET GESTION DES PRESTATIONS
+1.1 Vue principale des prestations d'un projet
+Informations à afficher par prestation :
+
+Nom de la prestation
+Code/référence de la commande
+Type de compétence(s) attendue(s) (avec niveau requis)
+Quantité vendue (nombre de jours/unités achetés)
+Quantité planifiée (nombre de jours/unités déjà attribués)
+Quantité réalisée (nombre de jours/unités effectués)
+Reste à planifier (quantité vendue - quantité planifiée)
+Date(s) prévue(s) :
+
+Vide si non planifié
+Date(s) si planifié
+Plage de dates si plusieurs sessions
+
+
+Statut visuel :
+
+🔴 Non planifié
+🟡 Partiellement planifié
+🟢 Entièrement planifié
+✅ Réalisé
+
+
+
+1.2 Actions disponibles
+
+Planifier une réservation (nouveau)
+Modifier une réservation existante
+Annuler une réservation
+Marquer comme réalisé
+Voir l'historique des modifications
+
+
+2. QUESTIONNAIRE DE KICKOFF PROJET
+2.1 Objectif
+Recueillir toutes les informations nécessaires à la planification dès le démarrage du projet.
+2.2 Questions à poser au client
+Section 1 : Complexité et exigences
+
+Quel est le niveau de complexité du projet ?
+
+⚪ Standard (tous niveaux de consultants acceptés)
+🟡 Complexe (niveau confirmé minimum requis)
+🔴 Stratégique (niveau senior/expert requis)
+
+
+Type d'intervention souhaité :
+
+🏢 100% sur site
+💻 100% à distance
+🔄 Hybride (préciser le ratio souhaité)
+
+
+
+Section 2 : Préférences consultant
+
+Avez-vous une préférence pour un consultant spécifique ?
+
+❌ Non, pas de préférence
+✅ Oui, consultant imposé : [Nom du consultant]
+⭐ Oui, préférence forte (mais pas bloquant) : [Nom du consultant]
+
+
+
+Section 3 : Contraintes temporelles
+
+Périodes d'interdiction d'accès (fermetures, congés, travaux) :
+
+[Dates à saisir]
+
+
+Périodes de forte activité nécessitant présence accrue :
+
+[Dates à saisir]
+
+
+Délai souhaité pour démarrage :
+
+🟢 Flexible (dans les 2 mois)
+🟡 Rapide (sous 3 semaines)
+🔴 Urgent (sous 1 semaine)
+
+
+
+Section 4 : Spécificités métier
+
+Le projet nécessite-t-il une connaissance préalable de votre organisation ?
+
+❌ Non, contexte standard
+⚠️ Oui, connaissance souhaitée
+✅ Oui, connaissance indispensable
+
+
+Domaine métier spécifique :
+
+[Finances publiques / RH / Urbanisme / Techniques / Autre]
+
+
+
+Section 5 : Continuité
+
+Préférence sur la continuité du consultant :
+
+⭐ Même consultant sur toute la prestation (préféré)
+🔄 Turnover acceptable si nécessaire
+❌ Peu importe
+
+
+
+2.3 Enregistrement des informations
+
+Ces informations sont enregistrées dans la fiche projet
+Elles sont modifiables à tout moment
+Elles sont utilisées automatiquement lors des recommandations
+
+
+3. CAS DE GESTION - PLANIFICATION
+3.1 Planification simple (manuelle)
+Cas d'usage : Le DP connaît déjà le consultant et les dates
+Données requises :
+
+Sélection de la prestation à planifier
+Quantité à planifier (≤ reste à planifier)
+Consultant sélectionné manuellement
+Date de début
+Date de fin (ou nombre de jours)
+Type d'intervention : sur site / à distance / hybride
+
+Validations :
+
+✅ Le consultant a les compétences requises
+✅ Le consultant est disponible sur la période
+✅ La quantité ne dépasse pas le reste à planifier
+✅ Le niveau du consultant correspond aux exigences du projet
+
+3.2 Planification assistée (recommandations)
+Cas d'usage : Le DP veut des suggestions de consultants et dates
+Algorithme de recommandation :
+INPUT :
+
+Prestation à planifier
+Quantité à planifier
+Période souhaitée (facultatif)
+Informations du questionnaire kickoff
+
+CRITÈRES D'ÉLIGIBILITÉ (BLOQUANTS) :
+1. Compétences requises
+
+✅ Le consultant possède la compétence
+✅ Le niveau du consultant ≥ niveau requis par la prestation
+❌ Si non = consultant exclu
+
+2. Disponibilité
+
+✅ Aucune autre réservation sur la période
+✅ Pas de congés/absences confirmés
+❌ Si non = consultant exclu (ou proposition de dates alternatives)
+
+3. Complexité projet vs Niveau consultant
+
+Client Standard : ✅ Tous niveaux acceptés
+Client Complexe : ✅ Confirmé, Senior, Expert uniquement
+Client Stratégique : ✅ Senior, Expert uniquement
+❌ Si inadéquation = consultant exclu
+
+4. Consultant imposé par le client
+
+Si client a imposé un consultant spécifique :
+
+✅ Seul ce consultant est proposé
+❌ Tous les autres sont exclus
+⚠️ Afficher message "Consultant imposé par le client"
+
+
+
+CRITÈRES INDICATIFS (NON BLOQUANTS) :
+5. Proximité géographique (si intervention sur site)
+
+🟢 Moins de 3h de trajet : Trajet optimal
+🟡 Entre 3h et 5h de trajet : Demi-journée de trajet
+🔴 Plus de 5h de trajet : Journée de trajet complète
+💻 Télétravail : Pas de trajet
+
+6. Maîtrise de la compétence (indicateur qualitatif)
+
+🌱 Débutant : consultant en apprentissage sur cette compétence
+💪 Maîtrise : consultant opérationnel, autonome
+🌟 Expert : consultant référent, formateur
+
+7. Expérience client
+
+⭐⭐⭐ A déjà travaillé pour ce client
+⭐⭐ A travaillé pour un client du même type/secteur
+⭐ Nouveau pour ce client
+
+8. Périodes à éviter du consultant
+
+✅ Aucune contrainte sur cette période
+⚠️ Période neutre pour le consultant
+❌ Période à éviter (préférence personnelle du consultant)
+
+9. Spécialisation métier
+
+✅ Domaine du consultant = domaine du projet
+〰️ Domaine proche ou polyvalent
+➖ Domaine différent
+
+10. Préférence client (non imposée)
+
+⭐ Consultant préféré par le client (préférence forte)
+➖ Pas de préférence
+
+OUTPUT :
+Pour chaque consultant éligible, afficher :
+┌─────────────────────────────────────────────────────────────┐
+│ Sarah MARTIN                                   [ÉLIGIBLE ✅] │
+├─────────────────────────────────────────────────────────────┤
+│ Compétences : React (Expert 🌟), Node.js (Maîtrise 💪)     │
+│ Disponibilité : 5 créneaux disponibles en avril             │
+│ Complexité : Senior - Compatible projet Stratégique ✅       │
+│                                                               │
+│ INDICATEURS :                                                 │
+│ • Trajet : 2h - Optimal 🟢                                   │
+│ • Expérience client : Déjà travaillé pour ce client ⭐⭐⭐    │
+│ • Périodes : Aucune contrainte ✅                            │
+│ • Spécialisation : Finances publiques - Match parfait ✅     │
+│ • Préférence client : Consultant préféré ⭐                  │
+│                                                               │
+│ CRÉNEAUX PROPOSÉS :                                          │
+│ • 1-5 avril 2026                                             │
+│ • 15-19 avril 2026                                           │
+│ • 22-26 avril 2026                                           │
+│                                                               │
+│ [📅 Planifier avec ce consultant]                            │
+└─────────────────────────────────────────────────────────────┘
+Ordre d'affichage des consultants :
+
+Consultant imposé (si existe)
+Consultants préférés par le client
+Consultants ayant déjà travaillé pour le client
+Autres consultants éligibles, triés par :
+
+Spécialisation métier
+Proximité géographique
+Expérience client similaire
+
+
+
+3.3 Planification en série
+Cas d'usage : Planifier plusieurs sessions d'une même prestation
+Fonctionnalité :
+
+Définir un pattern : ex. "2 jours par semaine pendant 5 semaines"
+Le système propose les créneaux et consultants
+Possibilité d'alterner entre consultants (si continuité non requise)
+Vision calendaire des sessions
+
+
+4. CONTRAINTES ET CRITÈRES
+4.1 Contraintes consultant
+Périodes à éviter :
+
+Types :
+
+🔴 Congés confirmés (bloquant)
+🟡 Préférences personnelles (non bloquant, indicateur)
+🔴 Formations prévues (bloquant)
+
+
+
+Temps de trajet :
+
+Calcul automatique domicile ↔ site client
+Classification :
+
+🟢 < 3h : Trajet optimal
+🟡 3-5h : Demi-journée de trajet
+🔴 > 5h : Journée de trajet
+
+
+Information visible mais non bloquante
+
+4.2 Contraintes client
+Type de client :
+
+⚪ Standard : tous niveaux de consultants acceptés
+🟡 Complexe : niveau confirmé minimum requis (bloquant)
+🔴 Stratégique : niveau senior/expert requis (bloquant)
+
+Exigences terrain :
+
+🏢 100% sur site
+💻 100% à distance
+🔄 Hybride (ratio à définir)
+
+Périodes spécifiques :
+
+Périodes d'interdiction d'accès (bloquant)
+Périodes de forte activité
+
+Consultant imposé/préféré :
+
+🔴 Consultant imposé : seul ce consultant est proposé (bloquant)
+⭐ Consultant préféré : priorité à ce consultant (non bloquant)
+
+4.3 Contraintes prestation
+Compétences :
+
+Compétence requise (bloquant)
+Niveau requis (bloquant)
+Spécialisation métier (indicatif)
+
+
+5. VUES ET INTERFACES
+5.1 Vue Projet (focus prestation)
+
+Tableau des prestations du projet
+Colonnes : nom, compétences, quantité vendue/planifiée/réalisée/reste
+Badge de complexité du projet visible
+Filtres : statut, type de prestation, consultant
+Action : "+ Planifier" sur chaque ligne
+
+5.2 Vue Calendrier
+
+Visualisation temporelle des réservations
+Par consultant (vue individuelle)
+Par projet (toutes les prestations)
+Par équipe (tous les consultants)
+Drag & drop pour déplacer les réservations
+Code couleur des temps de trajet
+
+5.3 Vue Recommandations
+
+Liste des consultants éligibles
+Critères bloquants validés affichés
+Indicateurs qualitatifs visibles
+Créneaux disponibles proposés
+Possibilité de filtrer/trier
+Alertes si consultant imposé
+
+5.4 Vue Disponibilités
+
+Matrice croisant consultants × périodes
+Code couleur :
+
+🟢 Disponible
+🔴 Occupé
+🟡 Période à éviter
+⚫ Congés/Formation
+
+
+
+
+6. RÈGLES MÉTIER
+6.1 Règles de validation
+Règles bloquantes :
+
+❌ Compétence requise absente
+❌ Niveau consultant < niveau requis
+❌ Consultant déjà réservé sur la période exacte
+❌ Consultant en congés confirmés ou formation
+❌ Quantité à planifier > reste à planifier
+❌ Client interdit l'accès sur la période
+❌ Niveau consultant incompatible avec complexité projet
+❌ Consultant différent de celui imposé par le client
+
+Règles d'avertissement (non bloquantes) :
+
+⚠️ Temps de trajet > 5h (journée de trajet)
+⚠️ Temps de trajet 3-5h (demi-journée de trajet)
+⚠️ Période à éviter pour consultant (préférence personnelle)
+⚠️ Consultant différent de celui préféré par le client
+⚠️ Prestation nécessitant continuité mais turnover prévu
+
+6.2 Règles de calcul
+Reste à planifier :
+Reste à planifier = Quantité vendue - Quantité planifiée
+Classification temps de trajet :
+SI temps < 3h ALORS "Trajet optimal 🟢"
+SI 3h ≤ temps ≤ 5h ALORS "Demi-journée de trajet 🟡"
+SI temps > 5h ALORS "Journée de trajet 🔴"
+SI télétravail ALORS "Pas de trajet 💻"
+
+7. ACTIONS ET NOTIFICATIONS
+7.1 Actions automatiques
+Lors d'une planification :
+
+✉️ Email au consultant (réservation confirmée)
+✉️ Email au client (information consultant + dates)
+📅 Ajout au calendrier du consultant
+🔔 Notification au DP si consultant sur période à éviter
+
+Lors d'une modification :
+
+✉️ Email au consultant (modification)
+✉️ Email au client (si dates changées)
+📝 Enregistrement dans l'historique
+
+Lors d'une annulation :
+
+✉️ Email consultant + client
+🔄 Remise à disposition du créneau
+📊 Mise à jour du reste à planifier
+
+7.2 Alertes proactives
+Alertes DP :
+
+🔴 Prestation vendue non planifiée depuis > 7 jours
+🟠 Prestation à échéance < 15 jours non planifiée
+⚠️ Conflit de disponibilité détecté
+⚠️ Consultant imposé non disponible sur période souhaitée
+
+Alertes Consultant :
+
+📍 Réservation avec temps de trajet important (> 5h)
+📅 Réservation sur période à éviter (préférence personnelle)
+
+
+8. CAS D'USAGE DÉTAILLÉS
+CAS 1 : Planification simple d'une formation
+
+DP ouvre le projet "Mairie de Lyon"
+Voit que le projet est "Standard", pas de consultant imposé
+Identifie la ligne "formation paie" (5 jours vendus, 0 planifiés)
+Clique sur "+ Planifier"
+Saisit : 5 jours, dates du 15-19 mars, sur site
+Sélectionne consultant dans la liste suggérée
+Système vérifie : compétences ✅, disponibilité ✅, niveau ✅
+Affiche indicateurs : trajet 2h 🟢, expert paie 🌟, déjà client ⭐⭐⭐
+Valide → réservation créée, emails envoyés
+
+CAS 2 : Planification avec recommandations (client complexe)
+
+DP ouvre projet "Métropole" (marqué Complexe)
+Clique "+ Planifier" sur "Développement module RH"
+Indique : 10 jours, période souhaitée "Avril 2026"
+Clique "Obtenir des recommandations"
+Système filtre : élimine consultants juniors/débutants (projet complexe)
+Système affiche 3 consultants éligibles :
+
+Sarah M. (Senior) - Expert React 🌟, client connu ⭐⭐⭐, trajet optimal 🟢
+Thomas B. (Senior) - Maîtrise React 💪, nouveau client ⭐, trajet 4h 🟡
+Julie K. (Confirmé) - Maîtrise React 💪, client similaire ⭐⭐, trajet optimal 🟢
+
+
+DP clique sur Sarah M., voit ses créneaux disponibles
+Sélectionne "1-5 avril + 8-12 avril", valide
+
+CAS 3 : Consultant imposé par le client
+
+Lors du kickoff, client impose consultant "Pierre D."
+DP ouvre la planification
+Clique "Obtenir des recommandations"
+Système affiche uniquement Pierre D. avec message :
+
+⚠️ "Consultant imposé par le client"
+
+
+Si Pierre D. non disponible :
+
+❌ Message "Consultant imposé non disponible sur cette période"
+📅 Proposition de dates alternatives où il est disponible
+OU 💬 Suggestion de recontacter le client pour autre consultant
+
+
+
+CAS 4 : Gestion de conflit
+
+DP planifie consultant Pierre sur "Projet A" (15-19 mars)
+Tente de planifier Pierre sur "Projet B" (17-18 mars)
+Système détecte conflit, affiche message :
+
+❌ "Pierre D. est déjà réservé du 15 au 19 mars"
+
+
+Propose alternatives :
+
+📅 Décaler "Projet B" après le 19 mars
+👤 Choisir un autre consultant éligible
+✂️ Scinder la réservation "Projet A"
+
+
+
+CAS 5 : Période à éviter
+
+DP planifie sur consultant Sarah (15-19 avril)
+Sarah a marqué cette période "à éviter" (préférence personnelle)
+Système n'élimine PAS Sarah mais affiche :
+
+⚠️ "Période à éviter pour Sarah M. (préférence personnelle)"
+
+
+DP peut :
+
+✅ Valider quand même (non bloquant)
+📅 Choisir une autre date
+💬 Contacter Sarah pour confirmer
+
+
+
+CAS 6 : Temps de trajet important
+
+DP planifie mission sur site à Marseille
+Consultant Pierre (basé à Lille) est éligible
+Système calcule : 7h30 de trajet
+Affiche :
+
+🔴 "Journée de trajet complète (7h30)"
+💡 Suggestion : "Envisager télétravail ou consultant local"
+
+
+DP peut :
+
+✅ Valider quand même
+🔄 Choisir consultant plus proche
+💻 Modifier la mission en télétravail/hybride
+
+
+
+
+9. ÉVOLUTIONS FUTURES (V2)
+9.1 Séquencement des prestations
+
+Définition des dépendances entre prestations
+Planification automatique respectant l'ordre logique
+Gantt de projet avec chemin critique
+
+9.2 Gestion d'équipe
+
+Planification de plusieurs consultants simultanément
+Gestion des binômes/trinômes
+Compétences complémentaires requises
+
+9.3 Facturation automatique
+
+Génération automatique des temps passés
+Validation consultant → facturation client
+Rapprochement commande/réalisé
+
+9.4 Feedback et amélioration continue
+
+Notes consultant par client (post-mission)
+Historique de performance
+Ajustement des indicateurs basé sur retours terrain
+
+9.5 Intelligence artificielle
+
+Apprentissage des préférences DP
+Prédiction des besoins en compétences futures
+Optimisation automatique du planning global
+
+
+10. INDICATEURS ET TABLEAUX DE BORD
+10.1 Indicateurs DP
+
+Taux de planification (prestations vendues vs planifiées)
+Délai moyen entre vente et planification
+Taux d'annulation des réservations
+% de planifications avec consultant imposé/préféré
+
+10.2 Indicateurs Consultant
+
+Nombre de jours planifiés/réalisés
+Temps de trajet moyen/mois
+Répartition des types de mission
+Taux de respect des périodes à éviter
+
+10.3 Indicateurs Globaux
+
+Capacité disponible par compétence/niveau
+Taux de remplissage de l'équipe
+Répartition géographique des missions
+% de projets complexes vs standard
+
+
+11. MODÈLE DE DONNÉES (AJOUTS)
+Table : projets (ajouts)
+sql- complexite VARCHAR(20) -- 'standard', 'complexe', 'strategique'
+- type_intervention VARCHAR(20) -- 'sur_site', 'distance', 'hybride'
+- ratio_hybride JSONB -- { sur_site: 60, distance: 40 }
+- consultant_impose_id UUID -- FK vers utilisateurs
+- consultant_prefere_id UUID -- FK vers utilisateurs
+- periodes_interdites JSONB -- [{ debut: date, fin: date, motif: string }]
+- periodes_forte_activite JSONB
+- necessite_connaissance_org BOOLEAN
+- domaine_metier VARCHAR(50)
+- continuite_requise BOOLEAN
+- delai_demarrage VARCHAR(20) -- 'flexible', 'rapide', 'urgent'
+Table : consultants_periodes_eviter (nouvelle)
+sql- id UUID
+- consultant_id UUID
+- date_debut DATE
+- date_fin DATE
+- type VARCHAR(20) -- 'conges', 'formation', 'preference'
+- motif TEXT
+Table : reservations (ajouts)
+sql- temps_trajet_heures DECIMAL
+- categorie_trajet VARCHAR(20) -- 'optimal', 'demi_journee', 'journee', 'teletravail'
+
+Prochaines étapes suggérées :
+
+✅ Validation du cahier des charges
+🎨 Création des maquettes d'interface (questionnaire kickoff + vues planification)
+🗄️ Création des tables Supabase (projets étendus, périodes à éviter, etc.)
+⚙️ Développement du questionnaire kickoff
+🤖 Développement de l'algorithme de recommandation
+🖥️ Développement des interfaces de planification
+Claude est une IA et peut faire des erreurs. Veuillez vérifier les réponses.

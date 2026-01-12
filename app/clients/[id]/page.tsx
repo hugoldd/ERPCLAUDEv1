@@ -5,20 +5,42 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 
+// ==============================
+// Utils : normaliser objet / tableau
+// ==============================
+function toOne<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null;
+  return Array.isArray(value) ? (value[0] ?? null) : value;
+}
+
+// ==============================
 // Composant pour afficher une note
-function NoteItem({ note, onModifier, onSupprimer }: { 
-  note: { id: string, contenu: string, created_at: string, updated_at: string },
-  onModifier: (id: string, contenu: string) => void,
-  onSupprimer: (id: string) => void
+// ==============================
+function NoteItem({
+  note,
+  onModifier,
+  onSupprimer,
+}: {
+  note: { id: string; contenu: string; created_at: string; updated_at: string };
+  onModifier: (id: string, contenu: string) => void;
+  onSupprimer: (id: string) => void;
 }) {
   const [edition, setEdition] = useState(false);
   const [contenu, setContenu] = useState(note.contenu);
 
-  const dateCreation = new Date(note.created_at).toLocaleDateString('fr-FR', { 
-    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' 
+  const dateCreation = new Date(note.created_at).toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
-  const dateModification = new Date(note.updated_at).toLocaleDateString('fr-FR', { 
-    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' 
+  const dateModification = new Date(note.updated_at).toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
   const estModifiee = note.created_at !== note.updated_at;
 
@@ -26,26 +48,22 @@ function NoteItem({ note, onModifier, onSupprimer }: {
     <div className="bg-[#1F2836] border border-[#FFFFFF26] rounded p-3 mb-3">
       <div className="grid grid-cols-12 gap-3 text-xs text-gray-400 mb-2">
         <div className="col-span-4">
-          <strong className="text-[#FFFFFF]">Créée le:</strong><br/>
+          <strong className="text-[#FFFFFF]">Créée le:</strong>
+          <br />
           {dateCreation}
         </div>
         <div className="col-span-4">
-          <strong className="text-[#FFFFFF]">Modifiée le:</strong><br/>
+          <strong className="text-[#FFFFFF]">Modifiée le:</strong>
+          <br />
           {estModifiee ? dateModification : '-'}
         </div>
         <div className="col-span-4 flex justify-end gap-2">
           {!edition ? (
             <>
-              <button
-                onClick={() => setEdition(true)}
-                className="text-[#2196F3] hover:text-[#FFFFFF]"
-              >
+              <button onClick={() => setEdition(true)} className="text-[#2196F3] hover:text-[#FFFFFF]">
                 ✏️
               </button>
-              <button
-                onClick={() => onSupprimer(note.id)}
-                className="text-red-400 hover:text-red-300"
-              >
+              <button onClick={() => onSupprimer(note.id)} className="text-red-400 hover:text-red-300">
                 🗑️
               </button>
             </>
@@ -73,6 +91,7 @@ function NoteItem({ note, onModifier, onSupprimer }: {
           )}
         </div>
       </div>
+
       {edition ? (
         <textarea
           value={contenu}
@@ -87,6 +106,9 @@ function NoteItem({ note, onModifier, onSupprimer }: {
   );
 }
 
+// ==============================
+// Types
+// ==============================
 interface Client {
   id: string;
   nom: string;
@@ -129,6 +151,35 @@ interface Projet {
   date_creation: string;
 }
 
+type ClientRel = { id: string; nom: string };
+type CommandeRel = { id: string; numero_commande: string; statut: string };
+type PrestationRel = { type_prestation: string; libelle: string };
+
+type ProjetDataRow = {
+  id: any;
+  numero_projet: any;
+  titre: any;
+  statut: any;
+  priorite: any;
+  budget_total: any;
+  date_creation: any;
+  date_debut_prevue: any;
+  date_fin_prevue: any;
+  client_id: any;
+  dp_affecte_id: any;
+
+  // IMPORTANT : on accepte objet OU tableau, car Supabase renvoie parfois des tableaux
+  client: ClientRel | ClientRel[] | null;
+  commande: CommandeRel | CommandeRel[] | null;
+
+  projet_prestations: Array<{
+    prestation: PrestationRel | PrestationRel[] | null;
+  }> | null;
+};
+
+// ==============================
+// Page
+// ==============================
 export default function FicheClient() {
   const params = useParams();
   const router = useRouter();
@@ -139,6 +190,7 @@ export default function FicheClient() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [projets, setProjets] = useState<Projet[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [modeEdition, setModeEdition] = useState(false);
   const [formData, setFormData] = useState<Client | null>(null);
   const [contactsDeplie, setContactsDeplie] = useState(true);
@@ -148,7 +200,8 @@ export default function FicheClient() {
   const [confirmationSuppression, setConfirmationSuppression] = useState(0);
 
   useEffect(() => {
-    chargerDonnees();
+    void chargerDonnees();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
 
   const chargerDonnees = async () => {
@@ -167,8 +220,8 @@ export default function FicheClient() {
       return;
     }
 
-    setClient(clientData);
-    setFormData(clientData);
+    setClient(clientData as Client);
+    setFormData(clientData as Client);
 
     const { data: contactsData } = await supabase
       .from('contacts_clients')
@@ -176,7 +229,7 @@ export default function FicheClient() {
       .eq('client_id', clientId)
       .order('principal', { ascending: false });
 
-    setContacts(contactsData || []);
+    setContacts((contactsData || []) as Contact[]);
 
     const { data: notesData } = await supabase
       .from('notes_clients')
@@ -184,15 +237,61 @@ export default function FicheClient() {
       .eq('client_id', clientId)
       .order('created_at', { ascending: false });
 
-    setNotes(notesData || []);
+    setNotes((notesData || []) as Note[]);
 
-    const { data: projetsData } = await supabase
+    // ✅ IMPORTANT : cette syntaxe est pour le .select() Supabase (pas SQL)
+    // Ici on force les FK de votre schéma
+    const { data: projetsData, error: erreurProjets } = await supabase
       .from('projets')
-      .select('*')
+      .select(
+        `
+        id,
+        numero_projet,
+        titre,
+        statut,
+        priorite,
+        budget_total,
+        date_creation,
+        date_debut_prevue,
+        date_fin_prevue,
+        client_id,
+        dp_affecte_id,
+        client:clients!projets_client_id_fkey(id, nom),
+        commande:commandes!projets_commande_id_fkey(id, numero_commande, statut),
+        projet_prestations(
+          prestation:prestations!projet_prestations_prestation_id_fkey(type_prestation, libelle)
+        )
+      `
+      )
       .eq('client_id', clientId)
       .order('date_creation', { ascending: false });
 
-    setProjets(projetsData || []);
+    if (erreurProjets) {
+      console.error('Erreur chargement projets:', erreurProjets);
+      setProjets([]);
+    } else {
+      const rows = (projetsData || []) as ProjetDataRow[];
+
+      const mapped: Projet[] = rows.map((p) => {
+        // Normalisation si jamais c’est renvoyé en tableau
+        const clientRel = toOne(p.client);
+        const commandeRel = toOne(p.commande);
+        void clientRel;
+        void commandeRel;
+
+        return {
+          id: String(p.id),
+          numero_projet: String(p.numero_projet),
+          titre: String(p.titre),
+          statut: String(p.statut),
+          budget_total: Number(p.budget_total || 0),
+          date_creation: String(p.date_creation || ''),
+        };
+      });
+
+      setProjets(mapped);
+    }
+
     setLoading(false);
   };
 
@@ -200,11 +299,7 @@ export default function FicheClient() {
     if (!formData) return;
 
     try {
-      const { error } = await supabase
-        .from('clients')
-        .update(formData)
-        .eq('id', clientId);
-
+      const { error } = await supabase.from('clients').update(formData).eq('id', clientId);
       if (error) throw error;
 
       setClient(formData);
@@ -223,34 +318,27 @@ export default function FicheClient() {
     }
 
     try {
-      const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', clientId);
-
+      const { error } = await supabase.from('clients').delete().eq('id', clientId);
       if (error) throw error;
 
       alert('Client supprimé avec succès');
       router.push('/clients');
     } catch (error) {
       console.error('Erreur:', error);
-      alert('Erreur lors de la suppression. Vérifiez qu\'il n\'y a pas de projets liés.');
+      alert("Erreur lors de la suppression. Vérifiez qu'il n'y a pas de projets liés.");
     }
   };
 
   const ajouterContact = async (contactData: Partial<Contact>) => {
     try {
-      const { error } = await supabase
-        .from('contacts_clients')
-        .insert({ ...contactData, client_id: clientId });
-
+      const { error } = await supabase.from('contacts_clients').insert({ ...contactData, client_id: clientId });
       if (error) throw error;
 
-      chargerDonnees();
+      await chargerDonnees();
       setNouveauContact(false);
     } catch (error) {
       console.error('Erreur:', error);
-      alert('Erreur lors de l\'ajout du contact');
+      alert("Erreur lors de l'ajout du contact");
     }
   };
 
@@ -258,13 +346,10 @@ export default function FicheClient() {
     if (!confirm('Supprimer ce contact ?')) return;
 
     try {
-      const { error } = await supabase
-        .from('contacts_clients')
-        .delete()
-        .eq('id', contactId);
-
+      const { error } = await supabase.from('contacts_clients').delete().eq('id', contactId);
       if (error) throw error;
-      chargerDonnees();
+
+      await chargerDonnees();
     } catch (error) {
       console.error('Erreur:', error);
       alert('Erreur lors de la suppression');
@@ -273,17 +358,14 @@ export default function FicheClient() {
 
   const ajouterNote = async (contenu: string) => {
     try {
-      const { error } = await supabase
-        .from('notes_clients')
-        .insert({ client_id: clientId, contenu });
-
+      const { error } = await supabase.from('notes_clients').insert({ client_id: clientId, contenu });
       if (error) throw error;
 
-      chargerDonnees();
+      await chargerDonnees();
       setNouvelleNote(false);
     } catch (error) {
       console.error('Erreur:', error);
-      alert('Erreur lors de l\'ajout de la note');
+      alert("Erreur lors de l'ajout de la note");
     }
   };
 
@@ -295,7 +377,7 @@ export default function FicheClient() {
         .eq('id', noteId);
 
       if (error) throw error;
-      chargerDonnees();
+      await chargerDonnees();
     } catch (error) {
       console.error('Erreur:', error);
       alert('Erreur lors de la modification');
@@ -306,13 +388,10 @@ export default function FicheClient() {
     if (!confirm('Supprimer cette note ?')) return;
 
     try {
-      const { error } = await supabase
-        .from('notes_clients')
-        .delete()
-        .eq('id', noteId);
-
+      const { error } = await supabase.from('notes_clients').delete().eq('id', noteId);
       if (error) throw error;
-      chargerDonnees();
+
+      await chargerDonnees();
     } catch (error) {
       console.error('Erreur:', error);
       alert('Erreur lors de la suppression');
@@ -321,21 +400,31 @@ export default function FicheClient() {
 
   const getStatutColor = (statut: string) => {
     switch (statut) {
-      case 'actif': return 'bg-green-500/20 text-green-300 border-green-500';
-      case 'prospect': return 'bg-blue-500/20 text-blue-300 border-blue-500';
-      case 'inactif': return 'bg-gray-500/20 text-gray-300 border-gray-500';
-      default: return 'bg-gray-500/20 text-gray-300 border-gray-500';
+      case 'actif':
+        return 'bg-green-500/20 text-green-300 border-green-500';
+      case 'prospect':
+        return 'bg-blue-500/20 text-blue-300 border-blue-500';
+      case 'inactif':
+        return 'bg-gray-500/20 text-gray-300 border-gray-500';
+      default:
+        return 'bg-gray-500/20 text-gray-300 border-gray-500';
     }
   };
 
   const getProjetStatutColor = (statut: string) => {
     switch (statut) {
-      case 'bannette': return 'bg-yellow-500/20 text-yellow-300 border-yellow-500';
-      case 'affecte': return 'bg-blue-500/20 text-blue-300 border-blue-500';
-      case 'en_cours': return 'bg-[#2196F3]/20 text-[#2196F3] border-[#2196F3]';
-      case 'termine': return 'bg-green-500/20 text-green-300 border-green-500';
-      case 'cloture': return 'bg-gray-500/20 text-gray-300 border-gray-500';
-      default: return 'bg-gray-500/20 text-gray-300 border-gray-500';
+      case 'bannette':
+        return 'bg-yellow-500/20 text-yellow-300 border-yellow-500';
+      case 'affecte':
+        return 'bg-blue-500/20 text-blue-300 border-blue-500';
+      case 'en_cours':
+        return 'bg-[#2196F3]/20 text-[#2196F3] border-[#2196F3]';
+      case 'termine':
+        return 'bg-green-500/20 text-green-300 border-green-500';
+      case 'cloture':
+        return 'bg-gray-500/20 text-gray-300 border-gray-500';
+      default:
+        return 'bg-gray-500/20 text-gray-300 border-gray-500';
     }
   };
 
@@ -352,8 +441,8 @@ export default function FicheClient() {
   return (
     <div className="min-h-screen bg-[#1F2836] p-8">
       <div className="max-w-6xl mx-auto">
-        <Link 
-          href="/clients" 
+        <Link
+          href="/clients"
           className="inline-flex items-center gap-2 text-[#2196F3] hover:text-[#FFFFFF] mb-6 transition-colors"
         >
           <span className="text-xl">←</span>
@@ -380,12 +469,14 @@ export default function FicheClient() {
                   <button
                     onClick={supprimerClient}
                     className={`${
-                      confirmationSuppression === 0 ? 'bg-red-600' :
-                      confirmationSuppression === 1 ? 'bg-red-700' : 'bg-red-900'
+                      confirmationSuppression === 0 ? 'bg-red-600' : confirmationSuppression === 1 ? 'bg-red-700' : 'bg-red-900'
                     } text-white px-4 py-2 rounded font-semibold hover:bg-red-800 transition-colors`}
                   >
-                    {confirmationSuppression === 0 ? '🗑️ Supprimer' :
-                     confirmationSuppression === 1 ? '⚠️ Confirmer ?' : '❌ SUPPRIMER DÉFINITIVEMENT'}
+                    {confirmationSuppression === 0
+                      ? '🗑️ Supprimer'
+                      : confirmationSuppression === 1
+                      ? '⚠️ Confirmer ?'
+                      : '❌ SUPPRIMER DÉFINITIVEMENT'}
                   </button>
                 </>
               ) : (
@@ -421,7 +512,7 @@ export default function FicheClient() {
             {/* Informations générales */}
             <div className="bg-[#2E3744] rounded-lg border border-[#FFFFFF26] p-6">
               <h2 className="text-xl font-bold text-[#FFFFFF] mb-4">Informations générales</h2>
-              
+
               {modeEdition && formData ? (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -493,30 +584,34 @@ export default function FicheClient() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4 text-[#FFFFFF]">
-                  <div><strong>Type :</strong> {client.type_structure || '-'}</div>
-                  <div><strong>SIRET :</strong> {client.siret || '-'}</div>
-                  <div><strong>Code postal :</strong> {client.code_postal || '-'}</div>
-                  <div><strong>Ville :</strong> {client.ville || '-'}</div>
-                  <div className="col-span-2"><strong>Créé le :</strong> {new Date(client.created_at).toLocaleDateString('fr-FR')}</div>
+                  <div>
+                    <strong>Type :</strong> {client.type_structure || '-'}
+                  </div>
+                  <div>
+                    <strong>SIRET :</strong> {client.siret || '-'}
+                  </div>
+                  <div>
+                    <strong>Code postal :</strong> {client.code_postal || '-'}
+                  </div>
+                  <div>
+                    <strong>Ville :</strong> {client.ville || '-'}
+                  </div>
+                  <div className="col-span-2">
+                    <strong>Créé le :</strong> {new Date(client.created_at).toLocaleDateString('fr-FR')}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Contacts multiples */}
+            {/* Contacts */}
             <div className="bg-[#2E3744] rounded-lg border border-[#FFFFFF26] p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-[#FFFFFF]">Contacts ({contacts.length})</h2>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => setContactsDeplie(!contactsDeplie)}
-                    className="text-[#2196F3] hover:text-[#FFFFFF] text-sm"
-                  >
+                  <button onClick={() => setContactsDeplie(!contactsDeplie)} className="text-[#2196F3] hover:text-[#FFFFFF] text-sm">
                     {contactsDeplie ? '▼ Réduire tout' : '▶ Déplier tout'}
                   </button>
-                  <button
-                    onClick={() => setNouveauContact(true)}
-                    className="bg-[#2196F3] text-white px-3 py-1 rounded text-sm hover:bg-[#1976D2]"
-                  >
+                  <button onClick={() => setNouveauContact(true)} className="bg-[#2196F3] text-white px-3 py-1 rounded text-sm hover:bg-[#1976D2]">
                     + Ajouter
                   </button>
                 </div>
@@ -525,18 +620,20 @@ export default function FicheClient() {
               {nouveauContact && (
                 <div className="bg-[#1F2836] border border-[#FFFFFF26] rounded p-4 mb-4">
                   <h3 className="font-semibold text-[#FFFFFF] mb-3">Nouveau contact</h3>
-                  <form onSubmit={(e) => {
-                    e.preventDefault();
-                    const form = e.target as HTMLFormElement;
-                    ajouterContact({
-                      nom: form.contact_nom.value,
-                      prenom: form.contact_prenom.value,
-                      fonction: form.contact_fonction.value,
-                      email: form.contact_email.value,
-                      telephone: form.contact_tel.value,
-                      principal: false
-                    });
-                  }}>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const form = e.target as HTMLFormElement;
+                      ajouterContact({
+                        nom: (form as any).contact_nom.value,
+                        prenom: (form as any).contact_prenom.value,
+                        fonction: (form as any).contact_fonction.value,
+                        email: (form as any).contact_email.value,
+                        telephone: (form as any).contact_tel.value,
+                        principal: false,
+                      });
+                    }}
+                  >
                     <div className="grid grid-cols-2 gap-3 mb-3">
                       <input name="contact_nom" placeholder="Nom *" required className="bg-[#2E3744] border border-[#FFFFFF26] rounded px-2 py-1 text-[#FFFFFF]" />
                       <input name="contact_prenom" placeholder="Prénom" className="bg-[#2E3744] border border-[#FFFFFF26] rounded px-2 py-1 text-[#FFFFFF]" />
@@ -545,52 +642,48 @@ export default function FicheClient() {
                       <input name="contact_tel" type="tel" placeholder="Téléphone" className="bg-[#2E3744] border border-[#FFFFFF26] rounded px-2 py-1 text-[#FFFFFF]" />
                     </div>
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => setNouveauContact(false)} className="bg-[#2E3744] text-[#FFFFFF] px-3 py-1 rounded text-sm">Annuler</button>
-                      <button type="submit" className="bg-[#2196F3] text-white px-3 py-1 rounded text-sm">Ajouter</button>
+                      <button type="button" onClick={() => setNouveauContact(false)} className="bg-[#2E3744] text-[#FFFFFF] px-3 py-1 rounded text-sm">
+                        Annuler
+                      </button>
+                      <button type="submit" className="bg-[#2196F3] text-white px-3 py-1 rounded text-sm">
+                        Ajouter
+                      </button>
                     </div>
                   </form>
                 </div>
               )}
 
-              {contactsDeplie && contacts.length === 0 && (
-                <p className="text-[#FFFFFF] text-center py-4">Aucun contact enregistré</p>
-              )}
+              {contactsDeplie && contacts.length === 0 && <p className="text-[#FFFFFF] text-center py-4">Aucun contact enregistré</p>}
 
-              {contactsDeplie && contacts.map((contact) => (
-                <div key={contact.id} className="bg-[#1F2836] border border-[#FFFFFF26] rounded p-3 mb-2">
-                  <div className="flex justify-between">
-                    <div className="text-[#FFFFFF]">
-                      <div className="font-semibold">{contact.prenom} {contact.nom} {contact.principal && '⭐'}</div>
-                      {contact.fonction && <div className="text-sm text-gray-300">{contact.fonction}</div>}
-                      {contact.email && <div className="text-sm">{contact.email}</div>}
-                      {contact.telephone && <div className="text-sm">{contact.telephone}</div>}
+              {contactsDeplie &&
+                contacts.map((contact) => (
+                  <div key={contact.id} className="bg-[#1F2836] border border-[#FFFFFF26] rounded p-3 mb-2">
+                    <div className="flex justify-between">
+                      <div className="text-[#FFFFFF]">
+                        <div className="font-semibold">
+                          {contact.prenom} {contact.nom} {contact.principal && '⭐'}
+                        </div>
+                        {contact.fonction && <div className="text-sm text-gray-300">{contact.fonction}</div>}
+                        {contact.email && <div className="text-sm">{contact.email}</div>}
+                        {contact.telephone && <div className="text-sm">{contact.telephone}</div>}
+                      </div>
+                      <button onClick={() => supprimerContact(contact.id)} className="text-red-400 hover:text-red-300 text-sm">
+                        🗑️
+                      </button>
                     </div>
-                    <button
-                      onClick={() => supprimerContact(contact.id)}
-                      className="text-red-400 hover:text-red-300 text-sm"
-                    >
-                      🗑️
-                    </button>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
 
-            {/* Notes libres avec historique */}
+            {/* Notes */}
             <div className="bg-[#2E3744] rounded-lg border border-[#FFFFFF26] p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-[#FFFFFF]">Notes ({notes.length})</h2>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => setNotesDeplie(!notesDeplie)}
-                    className="text-[#2196F3] hover:text-[#FFFFFF] text-sm"
-                  >
+                  <button onClick={() => setNotesDeplie(!notesDeplie)} className="text-[#2196F3] hover:text-[#FFFFFF] text-sm">
                     {notesDeplie ? '▼ Réduire tout' : '▶ Déplier tout'}
                   </button>
-                  <button
-                    onClick={() => setNouvelleNote(true)}
-                    className="bg-[#2196F3] text-white px-3 py-1 rounded text-sm hover:bg-[#1976D2]"
-                  >
+                  <button onClick={() => setNouvelleNote(true)} className="bg-[#2196F3] text-white px-3 py-1 rounded text-sm hover:bg-[#1976D2]">
                     + Ajouter une note
                   </button>
                 </div>
@@ -599,12 +692,14 @@ export default function FicheClient() {
               {nouvelleNote && (
                 <div className="bg-[#1F2836] border border-[#FFFFFF26] rounded p-4 mb-4">
                   <h3 className="font-semibold text-[#FFFFFF] mb-3">Nouvelle note</h3>
-                  <form onSubmit={(e) => {
-                    e.preventDefault();
-                    const form = e.target as HTMLFormElement;
-                    ajouterNote(form.note_contenu.value);
-                    form.reset();
-                  }}>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const form = e.target as HTMLFormElement;
+                      ajouterNote((form as any).note_contenu.value);
+                      form.reset();
+                    }}
+                  >
                     <textarea
                       name="note_contenu"
                       required
@@ -613,38 +708,39 @@ export default function FicheClient() {
                       className="w-full bg-[#2E3744] border border-[#FFFFFF26] rounded px-3 py-2 text-[#FFFFFF] mb-3"
                     />
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => setNouvelleNote(false)} className="bg-[#2E3744] text-[#FFFFFF] px-3 py-1 rounded text-sm">Annuler</button>
-                      <button type="submit" className="bg-[#2196F3] text-white px-3 py-1 rounded text-sm">Ajouter</button>
+                      <button type="button" onClick={() => setNouvelleNote(false)} className="bg-[#2E3744] text-[#FFFFFF] px-3 py-1 rounded text-sm">
+                        Annuler
+                      </button>
+                      <button type="submit" className="bg-[#2196F3] text-white px-3 py-1 rounded text-sm">
+                        Ajouter
+                      </button>
                     </div>
                   </form>
                 </div>
               )}
 
-              {notesDeplie && notes.length === 0 && (
-                <p className="text-[#FFFFFF] text-center py-4">Aucune note enregistrée</p>
-              )}
+              {notesDeplie && notes.length === 0 && <p className="text-[#FFFFFF] text-center py-4">Aucune note enregistrée</p>}
 
-              {notesDeplie && notes.map((note) => (
-                <NoteItem
-                  key={note.id}
-                  note={note}
-                  onModifier={modifierNote}
-                  onSupprimer={supprimerNote}
-                />
-              ))}
+              {notesDeplie &&
+                notes.map((note) => (
+                  <NoteItem key={note.id} note={note} onModifier={modifierNote} onSupprimer={supprimerNote} />
+                ))}
             </div>
           </div>
 
           {/* Historique projets */}
           <div className="bg-[#2E3744] rounded-lg border border-[#FFFFFF26] p-6 h-fit">
             <h2 className="text-xl font-bold text-[#FFFFFF] mb-4">Projets ({projets.length})</h2>
-            
+
             {projets.length === 0 ? (
               <p className="text-[#FFFFFF] text-center py-8">Aucun projet</p>
             ) : (
               <div className="space-y-3">
                 {projets.map((projet) => (
-                  <div key={projet.id} className="bg-[#1F2836] border border-[#FFFFFF26] rounded p-3 hover:border-[#2196F3] transition-colors cursor-pointer">
+                  <div
+                    key={projet.id}
+                    className="bg-[#1F2836] border border-[#FFFFFF26] rounded p-3 hover:border-[#2196F3] transition-colors cursor-pointer"
+                  >
                     <div className="text-sm font-semibold text-[#FFFFFF] mb-1">{projet.numero_projet}</div>
                     <div className="text-xs text-[#FFFFFF] mb-2">{projet.titre}</div>
                     <div className="flex justify-between items-center">
@@ -658,6 +754,7 @@ export default function FicheClient() {
               </div>
             )}
           </div>
+
         </div>
       </div>
     </div>

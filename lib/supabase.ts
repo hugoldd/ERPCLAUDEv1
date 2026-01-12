@@ -65,6 +65,21 @@ export interface Projet {
   priorite: 'basse' | 'normale' | 'haute' | 'urgente';
   budget_total: number;
   notes_affectation?: string;
+
+  charge_totale_estimee_jours?: number;
+}
+
+// ============================================
+// NOUVEAU TYPE - EQUIPES
+// ============================================
+export interface Equipe {
+  id: string;
+  nom: string;
+  description?: string | null;
+  actif: boolean;
+  ressource_generique: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // ============================================
@@ -92,11 +107,35 @@ export interface Consultant {
   type_contrat?: 'interne' | 'freelance' | 'sous_traitant';
   date_entree?: string;
   date_sortie?: string;
+
+  // TJM = Taux Journalier Moyen (€/jour)
   tjm?: number;
+
   disponibilite_pct: number;
+
+  // Rattachement équipe
+  equipe_id?: string | null;
+
+  // Jours travaillés (lun->ven)
+  travail_lundi: boolean;
+  travail_mardi: boolean;
+  travail_mercredi: boolean;
+  travail_jeudi: boolean;
+  travail_vendredi: boolean;
+
+  // Adresse (trajets plus tard)
+  adresse_ligne1?: string | null;
+  adresse_ligne2?: string | null;
+  code_postal?: string | null;
+  ville?: string | null;
+  pays?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+
   photo_url?: string;
   cv_url?: string;
   notes?: string;
+
   created_at?: string;
   updated_at?: string;
 }
@@ -106,14 +145,14 @@ export interface ConsultantCompetence {
   consultant_id: string;
   competence_id: string;
   niveau_maitrise: 'debutant' | 'intermediaire' | 'expert';
-  annees_experience?: number;
+  annees_experience?: number | null;
   date_acquisition?: string;
   derniere_utilisation?: string;
   certification: boolean;
-  nom_certification?: string;
-  date_certification?: string;
-  organisme_certification?: string;
-  notes?: string;
+  nom_certification?: string | null;
+  date_certification?: string | null;
+  organisme_certification?: string | null;
+  notes?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -184,4 +223,85 @@ export interface MatchingConsultant {
   competences_requises: number;
   competences_matchees: number;
   taux_matching: number;
+}
+
+// ============================================
+// GESTION DE RÉSERVATION (README)
+// ============================================
+export type ReservationStatut = 'prevue' | 'confirmee' | 'en_cours' | 'terminee' | 'annulee';
+export type DisponibiliteType = 'conges' | 'formation' | 'inter_contrat' | 'indisponible';
+export type JalonType = 'jalon' | 'phase' | 'livrable';
+export type JalonStatut = 'a_venir' | 'en_cours' | 'termine' | 'retard';
+
+export interface Reservation {
+  id: string;
+  projet_id: string;
+  consultant_id: string;
+  date_debut: string;
+  date_fin: string;
+  charge_pct: number;
+  statut: ReservationStatut;
+  role_projet?: string | null;
+  notes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface DisponibiliteConsultant {
+  id: string;
+  consultant_id: string;
+  date_debut: string;
+  date_fin: string;
+  type: DisponibiliteType;
+  pourcentage: number;
+  motif?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface JalonProjet {
+  id: string;
+  projet_id: string;
+  nom: string;
+  date_prevue?: string | null;
+  date_reelle?: string | null;
+  type: JalonType;
+  statut: JalonStatut;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface HistoriqueReservation {
+  id: string;
+  reservation_id?: string | null;
+  action: 'INSERT' | 'UPDATE' | 'DELETE';
+  motif?: string | null;
+  changed_by?: string | null;
+  changed_at?: string;
+  old_data?: any;
+  new_data?: any;
+}
+
+export interface VDisponibiliteTempsReel {
+  consultant_id: string;
+  base_pct: number;
+  reserved_pct: number;
+  indispo_pct: number;
+  disponible_pct: number;
+}
+
+export interface VConflitSuroccupation {
+  consultant_id: string;
+  jour: string;
+  total_charge_pct: number;
+  niveau_alerte: 'orange' | 'rouge' | 'ok';
+}
+
+export interface VConflitBudget {
+  projet_id: string;
+  numero_projet: string;
+  titre: string;
+  budget_total: number;
+  cout_reserve: number;
+  depassement: number;
 }

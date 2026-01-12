@@ -55,7 +55,6 @@ export default function Home() {
       value: stats.totalClients,
       icon: '👥',
       color: colors.accent,
-      trend: '+12%',
       trendPositive: true
     },
     {
@@ -63,7 +62,6 @@ export default function Home() {
       value: stats.totalProjets,
       icon: '📊',
       color: colors.success,
-      trend: '+8%',
       trendPositive: true
     },
     {
@@ -71,7 +69,6 @@ export default function Home() {
       value: stats.projetsEnCours,
       icon: '🚀',
       color: '#f59e0b',
-      trend: '+5%',
       trendPositive: true
     },
     {
@@ -79,7 +76,6 @@ export default function Home() {
       value: stats.projetsBannette,
       icon: '⏳',
       color: colors.warning,
-      trend: '-3%',
       trendPositive: false
     }
   ];
@@ -153,7 +149,6 @@ export default function Home() {
                     backgroundColor: stat.trendPositive ? `${colors.success}20` : `${colors.danger}20`
                   }}
                 >
-                  {stat.trend}
                 </div>
               </div>
               <div className="text-3xl font-bold mb-1" style={{ color: colors.text }}>

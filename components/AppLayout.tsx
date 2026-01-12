@@ -21,7 +21,13 @@ export default function AppLayout({ children, rightPanel }: AppLayoutProps) {
     { name: 'Clients', href: '/clients', icon: '👥' },
     { name: 'Commandes', href: '/commandes/nouvelle', icon: '📝' },
     { name: 'Bannette', href: '/bannette', icon: '📋' },
-    { name: 'Projets', href: '/projets', icon: '🎯' },
+    // Ressources
+    { name: 'Consultants', href: '/consultants', icon: '🧑‍💼' },
+    { name: 'Équipes', href: '/equipes', icon: '👥' },
+
+    // Module planning
+    { name: 'Gestion projet', href: '/gestion-projet', icon: '📅' },
+
     { name: 'Catalogues', href: '/catalogues', icon: '📚' },
     { name: 'Personnalisation', href: '/personnalisation', icon: '🎨' },
   ];
@@ -33,29 +39,21 @@ export default function AppLayout({ children, rightPanel }: AppLayoutProps) {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      {/* Top Navbar */}
-      <header 
+      <header
         className="flex items-center justify-between px-6 py-4 border-b flex-shrink-0"
-        style={{ 
-          backgroundColor: colors.sidebar,
-          borderColor: colors.border 
-        }}
+        style={{ backgroundColor: colors.sidebar, borderColor: colors.border }}
       >
         <Link href="/" className="flex items-center gap-2">
-          <Logo 
-            variant={colors.name === 'Light' ? 'light' : 'dark'} 
-            width={140} 
-            height={42} 
+          <Logo
+            variant={colors.name === 'Light' ? 'light' : 'dark'}
+            width={140}
+            height={42}
             showTagline={false}
           />
         </Link>
 
-        {/* User Info */}
         <div className="flex items-center gap-3">
-          <div 
-            className="w-10 h-10 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: colors.accent }}
-          >
+          <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: colors.accent }}>
             <span className="text-white font-bold">U</span>
           </div>
           <div className="hidden md:block">
@@ -70,15 +68,7 @@ export default function AppLayout({ children, rightPanel }: AppLayoutProps) {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar Navigation - SANS LOGO */}
-        <aside 
-          className="w-64 flex-shrink-0 overflow-y-auto border-r"
-          style={{ 
-            backgroundColor: colors.sidebar,
-            borderColor: colors.border
-          }}
-        >
-          {/* Navigation Links */}
+        <aside className="w-64 flex-shrink-0 overflow-y-auto border-r" style={{ backgroundColor: colors.sidebar, borderColor: colors.border }}>
           <nav className="p-4 space-y-1">
             {navigation.map((item) => (
               <Link
@@ -90,14 +80,10 @@ export default function AppLayout({ children, rightPanel }: AppLayoutProps) {
                   color: isActive(item.href) ? '#ffffff' : colors.text,
                 }}
                 onMouseEnter={(e) => {
-                  if (!isActive(item.href)) {
-                    e.currentTarget.style.backgroundColor = colors.sidebarHover;
-                  }
+                  if (!isActive(item.href)) e.currentTarget.style.backgroundColor = colors.sidebarHover;
                 }}
                 onMouseLeave={(e) => {
-                  if (!isActive(item.href)) {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                  }
+                  if (!isActive(item.href)) e.currentTarget.style.backgroundColor = 'transparent';
                 }}
               >
                 <span className="text-xl">{item.icon}</span>
@@ -107,14 +93,10 @@ export default function AppLayout({ children, rightPanel }: AppLayoutProps) {
           </nav>
         </aside>
 
-        {/* Main Content */}
         <main className="flex-1 overflow-y-auto">
-          <div className="p-8">
-            {children}
-          </div>
+          <div className="p-8">{children}</div>
         </main>
 
-        {/* Right Panel (Rétractable) */}
         {rightPanel && (
           <>
             <button
@@ -122,23 +104,16 @@ export default function AppLayout({ children, rightPanel }: AppLayoutProps) {
               className="fixed right-0 top-1/2 -translate-y-1/2 p-2 rounded-l-lg z-40"
               style={{ backgroundColor: colors.accent }}
             >
-              <span className="text-white text-xl">
-                {rightPanelOpen ? '→' : '←'}
-              </span>
+              <span className="text-white text-xl">{rightPanelOpen ? '→' : '←'}</span>
             </button>
 
             <aside
               className={`w-80 flex-shrink-0 overflow-y-auto border-l fixed right-0 top-0 bottom-0 transition-transform duration-300 z-30 ${
                 rightPanelOpen ? 'translate-x-0' : 'translate-x-full'
               }`}
-              style={{ 
-                backgroundColor: colors.card,
-                borderColor: colors.border 
-              }}
+              style={{ backgroundColor: colors.card, borderColor: colors.border }}
             >
-              <div className="p-6">
-                {rightPanel}
-              </div>
+              <div className="p-6">{rightPanel}</div>
             </aside>
           </>
         )}
