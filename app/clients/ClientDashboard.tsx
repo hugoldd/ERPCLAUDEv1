@@ -1,27 +1,28 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import {
+  AlertCircle,
+  AlertTriangle,
+  DollarSign,
+  FileText,
+  Info,
+  Mail,
+  Phone,
+  Users
+} from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '@/lib/supabase';
-import { Badge, SectionHeader, formatCurrencyEUR } from '@/app/clients/_ui';
-import { useClientUi } from '@/app/clients/_ui';
-import type {
-  Client,
-  ClientAlerte,
-  ClientSatisfactionEvaluation,
-  ClientInvoice,
-  Projet,
-  Commande
-} from '@/types/clients';
+import { useClientUi, formatCurrencyEUR, formatDateFR } from '@/app/clients/_ui';
+import type { ClientAlerte, ClientContact, ClientActivityEvent, ClientInvoice } from '@/types/clients';
 
-export default function ClientDashboard(props: { clientId: string }) {
+export default function ClientDashboard(props: { clientId: string; onOpenAlertes?: () => void }) {
   const ui = useClientUi();
 
-  const [client, setClient] = useState<Client | null>(null);
   const [alertes, setAlertes] = useState<ClientAlerte[]>([]);
-  const [satisfaction, setSatisfaction] = useState<ClientSatisfactionEvaluation[]>([]);
+  const [contacts, setContacts] = useState<ClientContact[]>([]);
+  const [activities, setActivities] = useState<ClientActivityEvent[]>([]);
   const [invoices, setInvoices] = useState<ClientInvoice[]>([]);
-  const [projets, setProjets] = useState<Projet[]>([]);
-  const [commandes, setCommandes] = useState<Commande[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,30 +31,23 @@ export default function ClientDashboard(props: { clientId: string }) {
     setError(null);
     setLoading(true);
     try {
-      const { data: c, error: e0 } = await supabase.from('clients').select('*').eq('id', props.clientId).maybeSingle();
-      if (e0) throw e0;
-      setClient(c ?? null);
-
-      const [{ data: a, error: e1 }, { data: s, error: e2 }, { data: i, error: e3 }, { data: p, error: e4 }, { data: co, error: e5 }] =
+      const [{ data: a, error: e1 }, { data: c, error: e2 }, { data: ev, error: e3 }, { data: inv, error: e4 }] =
         await Promise.all([
           supabase.from('client_alertes').select('*').eq('client_id', props.clientId).order('created_at', { ascending: false }),
-          supabase.from('client_satisfaction_evaluations').select('*').eq('client_id', props.clientId).order('date_evaluation', { ascending: false }),
-          supabase.from('client_finance_invoices').select('*').eq('client_id', props.clientId).order('date_emission', { ascending: false }),
-          supabase.from('projets').select('*').eq('client_id', props.clientId).order('created_at', { ascending: false }),
-          supabase.from('commandes').select('*').eq('client_id', props.clientId).order('created_at', { ascending: false })
+          supabase.from('contacts_clients').select('*').eq('client_id', props.clientId).order('principal', { ascending: false }).order('created_at', { ascending: false }),
+          supabase.from('client_activity_events').select('*').eq('client_id', props.clientId).order('created_at', { ascending: false }),
+          supabase.from('client_finance_invoices').select('*').eq('client_id', props.clientId).order('date_emission', { ascending: true })
         ]);
 
       if (e1) throw e1;
       if (e2) throw e2;
       if (e3) throw e3;
       if (e4) throw e4;
-      if (e5) throw e5;
 
       setAlertes((a ?? []) as ClientAlerte[]);
-      setSatisfaction((s ?? []) as ClientSatisfactionEvaluation[]);
-      setInvoices((i ?? []) as ClientInvoice[]);
-      setProjets((p ?? []) as Projet[]);
-      setCommandes((co ?? []) as Commande[]);
+      setContacts((c ?? []) as ClientContact[]);
+      setActivities((ev ?? []) as ClientActivityEvent[]);
+      setInvoices((inv ?? []) as ClientInvoice[]);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Erreur inconnue.');
     } finally {
@@ -66,91 +60,203 @@ export default function ClientDashboard(props: { clientId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.clientId]);
 
-  const kpis = useMemo(() => {
-    const alertesActives = alertes.filter((x) => x.actif).length;
+  const revenueData = useMemo(() => {
+    const map = new Map<string, number>();
+    const monthKey = (d: string) => {
+      const dt = new Date(d);
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, '0');
+      return `${y}-${m}`;
+    };
 
-    const satAvg =
-      satisfaction.length === 0 ? null : satisfaction.reduce((acc, x) => acc + (x.score ?? 0), 0) / satisfaction.length;
+    for (const inv of invoices) {
+      if (inv.statut === 'annulee') continue;
+      const key = monthKey(inv.date_emission);
+      const next = map.get(key) ?? 0;
+      map.set(key, next + (typeof inv.montant_ttc === 'number' ? inv.montant_ttc : 0));
+    }
 
-    const ca = invoices
-      .filter((x) => x.statut !== 'annulee')
-      .reduce((acc, x) => acc + (typeof x.montant_ttc === 'number' ? x.montant_ttc : 0), 0);
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, value]) => ({ month, value }));
+  }, [invoices]);
 
-    const projetsActifs = projets.filter((p) => p.statut === 'en_cours' || p.statut === 'affecte').length;
+  const activeAlerts = useMemo(() => alertes.filter((a) => a.actif), [alertes]);
+  const topContacts = useMemo(() => contacts.slice(0, 3), [contacts]);
+  const recentActivities = useMemo(() => activities.slice(0, 5), [activities]);
 
-    const commandesTotal = commandes.length;
+  const activityIcon = (type: string) => {
+    if (type === 'finance') return DollarSign;
+    if (type === 'document') return FileText;
+    if (type === 'contact') return Phone;
+    if (type === 'alerte') return AlertTriangle;
+    return Info;
+  };
 
-    const facturesEnRetard = invoices.filter((x) => x.statut === 'en_retard').length;
+  const activityColor = (type: string) => {
+    if (type === 'finance') return ui.c.success;
+    if (type === 'document') return ui.c.warning;
+    if (type === 'contact') return ui.c.accent;
+    if (type === 'alerte') return ui.c.danger;
+    return ui.c.muted;
+  };
 
-    return { alertesActives, satAvg, ca, projetsActifs, commandesTotal, facturesEnRetard };
-  }, [alertes, satisfaction, invoices, projets, commandes]);
+  const alertConfig = (niveau: ClientAlerte['niveau']) => {
+    if (niveau === 'danger') return { icon: AlertTriangle, color: ui.c.danger };
+    if (niveau === 'warning') return { icon: AlertCircle, color: ui.c.warning };
+    return { icon: Info, color: ui.c.accent };
+  };
 
   return (
     <div className="p-3 sm:p-0">
-      <div className="p-4 sm:p-5" style={ui.cardStyle}>
-        <SectionHeader
-          title={client ? client.nom : 'Client'}
-          subtitle="Synthèse des indicateurs et signaux opérationnels"
-          right={
-            <button type="button" className="px-3 py-2 text-sm" style={ui.btnStyle} onClick={() => void load()} disabled={loading}>
-              {loading ? 'Chargement...' : 'Rafraîchir'}
-            </button>
-          }
-        />
-
-        {error ? <div className="mt-3 text-sm" style={{ color: ui.c.danger }}>{error}</div> : null}
-
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <div className="p-4" style={{ border: `1px solid ${ui.c.border}`, borderRadius: 16 }}>
-            <div className="text-sm opacity-80">Statut</div>
-            <div className="mt-2 flex items-center gap-2">
-              <Badge
-                label={client?.statut ?? '—'}
-                tone={client?.statut === 'actif' ? 'success' : client?.statut === 'prospect' ? 'warning' : 'neutral'}
-              />
-              {kpis.alertesActives > 0 ? <Badge label={`${kpis.alertesActives} alerte(s)`} tone="danger" /> : <Badge label="Aucune alerte" tone="success" />}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div className="lg:col-span-3 space-y-4">
+          <div className="p-4" style={ui.cardStyle}>
+            <div className="flex items-center justify-between">
+              <div className="font-semibold">Evolution du CA (factures)</div>
+              <div className="text-xs" style={{ color: ui.c.muted }}>
+                Total: {formatCurrencyEUR(revenueData.reduce((acc, item) => acc + item.value, 0))}
+              </div>
+            </div>
+            <div className="mt-4 h-[280px]">
+              <ResponsiveContainer width="100%" height="100%" minHeight={240} minWidth={0}>
+                <LineChart data={revenueData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={ui.c.border} />
+                  <XAxis dataKey="month" stroke={ui.c.muted} />
+                  <YAxis stroke={ui.c.muted} tickFormatter={(value) => `${Math.round(value / 1000)}k`} />
+                  <Tooltip
+                    formatter={(value: number) => formatCurrencyEUR(value)}
+                    contentStyle={{ backgroundColor: ui.c.card, border: `1px solid ${ui.c.border}` }}
+                  />
+                  <Line type="monotone" dataKey="value" stroke={ui.c.accent} strokeWidth={3} dot={{ fill: ui.c.accent, r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="p-4" style={{ border: `1px solid ${ui.c.border}`, borderRadius: 16 }}>
-            <div className="text-sm opacity-80">CA (factures non annulées)</div>
-            <div className="mt-2 text-xl font-semibold">{formatCurrencyEUR(kpis.ca)}</div>
-            <div className="mt-1 text-sm opacity-70">
-              {kpis.facturesEnRetard > 0 ? `${kpis.facturesEnRetard} facture(s) en retard` : 'Aucune facture en retard'}
+          <div className="p-4" style={ui.cardStyle}>
+            <div className="flex items-center justify-between">
+              <div className="font-semibold">Dernieres activites</div>
+              <button type="button" className="px-3 py-2 text-sm" style={ui.btnStyle} onClick={() => void load()} disabled={loading}>
+                {loading ? 'Chargement...' : 'Rafraichir'}
+              </button>
             </div>
-          </div>
-
-          <div className="p-4" style={{ border: `1px solid ${ui.c.border}`, borderRadius: 16 }}>
-            <div className="text-sm opacity-80">Satisfaction moyenne</div>
-            <div className="mt-2 text-xl font-semibold">
-              {kpis.satAvg === null ? '—' : `${kpis.satAvg.toFixed(2)} / 5`}
-            </div>
-            <div className="mt-1 text-sm opacity-70">{satisfaction.length} évaluation(s)</div>
-          </div>
-
-          <div className="p-4" style={{ border: `1px solid ${ui.c.border}`, borderRadius: 16 }}>
-            <div className="text-sm opacity-80">Projets actifs</div>
-            <div className="mt-2 text-xl font-semibold">{kpis.projetsActifs}</div>
-            <div className="mt-1 text-sm opacity-70">{projets.length} projet(s) total</div>
-          </div>
-
-          <div className="p-4" style={{ border: `1px solid ${ui.c.border}`, borderRadius: 16 }}>
-            <div className="text-sm opacity-80">Commandes</div>
-            <div className="mt-2 text-xl font-semibold">{kpis.commandesTotal}</div>
-            <div className="mt-1 text-sm opacity-70">Historique client</div>
-          </div>
-
-          <div className="p-4" style={{ border: `1px solid ${ui.c.border}`, borderRadius: 16 }}>
-            <div className="text-sm opacity-80">Coordonnées</div>
-            <div className="mt-2 text-sm">
-              <div className="opacity-90">{client?.email_contact ?? '—'}</div>
-              <div className="opacity-70">{client?.telephone_contact ?? '—'}</div>
-              <div className="opacity-70">{client?.ville ?? '—'} {client?.code_postal ? `(${client.code_postal})` : ''}</div>
+            {error ? <div className="mt-3 text-sm" style={{ color: ui.c.danger }}>{error}</div> : null}
+            <div className="mt-4 space-y-3">
+              {recentActivities.map((activity) => {
+                const Icon = activityIcon(activity.type_event);
+                const color = activityColor(activity.type_event);
+                return (
+                  <div
+                    key={activity.id}
+                    className="flex items-start gap-3 p-3 rounded-lg transition-colors"
+                    style={{ backgroundColor: ui.c.bg }}
+                  >
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${color}22` }}>
+                      <Icon size={18} style={{ color }} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium">{activity.titre}</div>
+                      <div className="text-xs" style={{ color: ui.c.muted }}>
+                        {activity.description ?? 'Aucun detail'} - {formatDateFR(activity.created_at)}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {!loading && recentActivities.length === 0 ? (
+                <div className="text-sm" style={{ color: ui.c.muted }}>Aucune activite recente.</div>
+              ) : null}
             </div>
           </div>
         </div>
 
-        {loading ? <div className="mt-4 text-sm opacity-80">Chargement des données...</div> : null}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="p-4" style={ui.cardStyle}>
+            <div className="font-semibold">Alertes actives</div>
+            <div className="mt-4 space-y-3">
+              {activeAlerts.map((alert) => {
+                const config = alertConfig(alert.niveau);
+                const Icon = config.icon;
+                return (
+                  <button
+                    key={alert.id}
+                    type="button"
+                    className="p-3 rounded-lg text-left"
+                    style={{ backgroundColor: ui.c.bg, cursor: props.onOpenAlertes ? 'pointer' : 'default' }}
+                    onClick={() => props.onOpenAlertes?.()}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${config.color}22` }}>
+                        <Icon size={16} style={{ color: config.color }} />
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-sm font-semibold">{alert.titre}</div>
+                        <div className="text-xs" style={{ color: ui.c.muted }}>{formatDateFR(alert.created_at)}</div>
+                      </div>
+                    </div>
+                    {alert.message ? <div className="mt-2 text-xs" style={{ color: ui.c.muted }}>{alert.message}</div> : null}
+                  </button>
+                );
+              })}
+              {!loading && activeAlerts.length === 0 ? (
+                <div className="text-sm" style={{ color: ui.c.muted }}>Aucune alerte active.</div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="p-4" style={ui.cardStyle}>
+            <div className="flex items-center justify-between">
+              <div className="font-semibold">Contacts principaux</div>
+              <Users size={16} style={{ color: ui.c.muted }} />
+            </div>
+            <div className="mt-4 space-y-3">
+              {topContacts.map((contact) => {
+                const initials = `${contact.prenom ?? ''} ${contact.nom ?? ''}`
+                  .trim()
+                  .split(' ')
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((p) => p[0]?.toUpperCase())
+                  .join('') || 'C';
+                return (
+                  <div key={contact.id} className="p-3 rounded-lg" style={{ backgroundColor: ui.c.bg }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-full flex items-center justify-center font-semibold" style={{ backgroundColor: ui.c.accent, color: 'white' }}>
+                        {initials}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">{`${contact.prenom ?? ''} ${contact.nom ?? ''}`.trim()}</div>
+                        <div className="text-xs" style={{ color: ui.c.muted }}>{contact.fonction ?? 'Fonction non definie'}</div>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <a
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs"
+                        style={{ backgroundColor: ui.c.card, color: ui.c.muted, border: `1px solid ${ui.c.border}` }}
+                        href={contact.email ? `mailto:${contact.email}` : undefined}
+                      >
+                        <Mail size={14} />
+                        Email
+                      </a>
+                      <a
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs"
+                        style={{ backgroundColor: ui.c.card, color: ui.c.muted, border: `1px solid ${ui.c.border}` }}
+                        href={contact.telephone ? `tel:${contact.telephone}` : undefined}
+                      >
+                        <Phone size={14} />
+                        Appel
+                      </a>
+                    </div>
+                  </div>
+                );
+              })}
+              {!loading && topContacts.length === 0 ? (
+                <div className="text-sm" style={{ color: ui.c.muted }}>Aucun contact principal.</div>
+              ) : null}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

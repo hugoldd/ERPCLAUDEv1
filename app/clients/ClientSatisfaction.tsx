@@ -1,18 +1,18 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { Star } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { SectionHeader } from '@/app/clients/_ui';
 import { useClientUi } from '@/app/clients/_ui';
 import type { ClientSatisfactionEvaluation } from '@/types/clients';
 
 import {
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  CartesianGrid,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
+  CartesianGrid,
   Tooltip
 } from 'recharts';
 
@@ -24,7 +24,7 @@ type FormState = {
   date_evaluation: string; // YYYY-MM-DD
 };
 
-type ScoreBucket = { label: string; count: number };
+type MonthPoint = { month: string; score: number };
 
 export default function ClientSatisfaction(props: { clientId: string }) {
   const ui = useClientUi();
@@ -41,6 +41,8 @@ export default function ClientSatisfaction(props: { clientId: string }) {
     source: 'interne',
     date_evaluation: new Date().toISOString().slice(0, 10)
   }));
+
+  const [editId, setEditId] = useState<string | null>(null);
 
   const load = async () => {
     setError(null);
@@ -72,29 +74,38 @@ export default function ClientSatisfaction(props: { clientId: string }) {
     return s / items.length;
   }, [items]);
 
-  const chartData = useMemo<ScoreBucket[]>(() => {
-    const buckets: ScoreBucket[] = [
-      { label: '1', count: 0 },
-      { label: '2', count: 0 },
-      { label: '3', count: 0 },
-      { label: '4', count: 0 },
-      { label: '5', count: 0 }
-    ];
+  const last = items[0];
+
+  const chartData = useMemo<MonthPoint[]>(() => {
+    const map = new Map<string, { sum: number; count: number }>();
+    const monthKey = (d: string) => {
+      const dt = new Date(d);
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, '0');
+      return `${y}-${m}`;
+    };
+
     for (const it of items) {
-      const idx = Math.min(5, Math.max(1, it.score ?? 0)) - 1;
-      if (buckets[idx]) buckets[idx].count += 1;
+      const k = monthKey(it.date_evaluation);
+      const prev = map.get(k) ?? { sum: 0, count: 0 };
+      prev.sum += it.score ?? 0;
+      prev.count += 1;
+      map.set(k, prev);
     }
-    return buckets;
+
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, v]) => ({ month, score: v.count ? v.sum / v.count : 0 }));
   }, [items]);
 
   const validate = (f: FormState): string | null => {
     if (!f.date_evaluation) return 'La date est obligatoire.';
     if (Number.isNaN(Number(f.score)) || f.score < 1 || f.score > 5) return 'Score invalide.';
-    if (!f.categorie.trim()) return 'La catégorie est obligatoire.';
+    if (!f.categorie.trim()) return 'La categorie est obligatoire.';
     return null;
   };
 
-  const add = async () => {
+  const addOrUpdate = async () => {
     setError(null);
     const v = validate(form);
     if (v) {
@@ -113,18 +124,32 @@ export default function ClientSatisfaction(props: { clientId: string }) {
         source: form.source.trim() || 'interne'
       };
 
-      const { error: e1 } = await supabase.from('client_satisfaction_evaluations').insert(payload);
-      if (e1) throw e1;
+      if (editId) {
+        const { error: e1 } = await supabase.from('client_satisfaction_evaluations').update(payload).eq('id', editId);
+        if (e1) throw e1;
 
-      await supabase.from('client_activity_events').insert({
-        client_id: props.clientId,
-        type_event: 'system',
-        titre: 'Évaluation satisfaction ajoutée',
-        description: `Score ${payload.score}/5 (${payload.categorie})`,
-        metadata: payload
-      });
+        await supabase.from('client_activity_events').insert({
+          client_id: props.clientId,
+          type_event: 'system',
+          titre: 'Evaluation satisfaction modifiee',
+          description: `Score ${payload.score}/5 (${payload.categorie})`,
+          metadata: payload
+        });
+      } else {
+        const { error: e1 } = await supabase.from('client_satisfaction_evaluations').insert(payload);
+        if (e1) throw e1;
+
+        await supabase.from('client_activity_events').insert({
+          client_id: props.clientId,
+          type_event: 'system',
+          titre: 'Evaluation satisfaction ajoutee',
+          description: `Score ${payload.score}/5 (${payload.categorie})`,
+          metadata: payload
+        });
+      }
 
       setForm((s) => ({ ...s, commentaire: '' }));
+      setEditId(null);
       await load();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Erreur inconnue.');
@@ -133,46 +158,134 @@ export default function ClientSatisfaction(props: { clientId: string }) {
     }
   };
 
+  const startEdit = (evaluation: ClientSatisfactionEvaluation) => {
+    setEditId(evaluation.id);
+    setForm({
+      score: evaluation.score ?? 5,
+      categorie: evaluation.categorie ?? 'general',
+      commentaire: evaluation.commentaire ?? '',
+      source: evaluation.source ?? 'interne',
+      date_evaluation: evaluation.date_evaluation ?? new Date().toISOString().slice(0, 10)
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditId(null);
+    setForm({
+      score: 5,
+      categorie: 'general',
+      commentaire: '',
+      source: 'interne',
+      date_evaluation: new Date().toISOString().slice(0, 10)
+    });
+  };
+
+  const remove = async (evaluation: ClientSatisfactionEvaluation) => {
+    setError(null);
+    setBusy(true);
+    try {
+      const { error: e1 } = await supabase.from('client_satisfaction_evaluations').delete().eq('id', evaluation.id);
+      if (e1) throw e1;
+
+      await supabase.from('client_activity_events').insert({
+        client_id: props.clientId,
+        type_event: 'system',
+        titre: 'Evaluation satisfaction supprimee',
+        description: `evaluation_id=${evaluation.id}`,
+        metadata: { evaluation_id: evaluation.id }
+      });
+
+      await load();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Erreur inconnue.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const renderStars = (score: number) => (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          size={16}
+          fill={star <= score ? ui.c.warning : 'none'}
+          stroke={star <= score ? ui.c.warning : ui.c.border}
+        />
+      ))}
+    </div>
+  );
+
   return (
     <div className="p-3 sm:p-0">
-      <div className="p-4 sm:p-5" style={ui.cardStyle}>
-        <SectionHeader
-          title="Satisfaction"
-          subtitle="Évaluations et distribution des scores"
-          right={
-            <button type="button" className="px-3 py-2 text-sm" style={ui.btnStyle} onClick={() => void load()} disabled={loading}>
-              {loading ? 'Chargement...' : 'Rafraîchir'}
-            </button>
-          }
-        />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <KpiCard title="Score moyen" value={avg === null ? '-' : avg.toFixed(2)} accent={ui.c.warning} />
+            <KpiCard title="Evaluations" value={String(items.length)} accent={ui.c.accent} />
+            <KpiCard title="Dernier score" value={last ? `${last.score}/5` : '-'} accent={ui.c.success} />
+            <KpiCard title="Derniere date" value={last ? last.date_evaluation : '-'} accent={ui.c.text} />
+          </div>
 
-        {error ? <div className="mt-3 text-sm" style={{ color: ui.c.danger }}>{error}</div> : null}
-
-        <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="p-4" style={{ border: `1px solid ${ui.c.border}`, borderRadius: 16 }}>
-            <div className="font-semibold">Résumé</div>
-            <div className="mt-2 text-sm opacity-80">
-              Moyenne : <span className="font-semibold">{avg === null ? '—' : `${avg.toFixed(2)} / 5`}</span> · Total : {items.length}
-            </div>
-
+          <div className="p-4" style={{ ...ui.cardStyle, backgroundColor: editId ? ui.editBg : ui.c.card }}>
+            <div className="font-semibold">Evolution du score</div>
             <div className="mt-4 h-[260px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="label" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Bar dataKey="count" />
-                </BarChart>
+              <ResponsiveContainer width="100%" height="100%" minHeight={220} minWidth={0}>
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={ui.c.border} />
+                  <XAxis dataKey="month" stroke={ui.c.muted} />
+                  <YAxis stroke={ui.c.muted} domain={[0, 5]} ticks={[0, 1, 2, 3, 4, 5]} />
+                  <Tooltip contentStyle={{ backgroundColor: ui.c.card, border: `1px solid ${ui.c.border}` }} />
+                  <Line type="monotone" dataKey="score" stroke={ui.c.warning} strokeWidth={2} dot={{ fill: ui.c.warning, r: 3 }} />
+                </LineChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="p-4" style={{ border: `1px solid ${ui.c.border}`, borderRadius: 16 }}>
-            <div className="font-semibold">Ajouter une évaluation</div>
-            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <div className="font-semibold">Evaluations detaillees</div>
+            <div className="mt-3 space-y-3">
+              {items.map((evaluation) => (
+                <div key={evaluation.id} className="p-4 rounded-xl" style={{ backgroundColor: ui.c.card, border: `1px solid ${ui.c.border}` }}>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="font-semibold">{evaluation.categorie ?? 'Categorie'}</div>
+                      <div className="text-xs" style={{ color: ui.c.muted }}>
+                        {evaluation.date_evaluation} · {evaluation.source ?? 'interne'}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold">{evaluation.score}/5</span>
+                      <button type="button" className="px-2 py-1 text-xs" style={ui.btnStyle} onClick={() => startEdit(evaluation)} disabled={busy}>
+                        Modifier
+                      </button>
+                      <button type="button" className="px-2 py-1 text-xs" style={{ ...ui.btnStyle, border: `1px solid ${ui.c.danger}` }} onClick={() => void remove(evaluation)} disabled={busy}>
+                        Supprimer
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    {renderStars(Math.round(evaluation.score ?? 0))}
+                    <span className="text-xs" style={{ color: ui.c.muted }}>Score</span>
+                  </div>
+                  {evaluation.commentaire ? (
+                    <div className="mt-3 text-sm" style={{ color: ui.c.text }}>
+                      {evaluation.commentaire}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+              {!loading && items.length === 0 ? <div className="text-sm" style={{ color: ui.c.muted }}>Aucune evaluation.</div> : null}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="p-4" style={ui.cardStyle}>
+            <div className="font-semibold">{editId ? 'Modifier une evaluation' : 'Ajouter une evaluation'}</div>
+            <div className="mt-3 grid grid-cols-1 gap-3">
               <div>
-                <div className="text-sm opacity-80">Date</div>
+                <div className="text-sm" style={{ color: ui.c.muted }}>Date</div>
                 <input
                   type="date"
                   className="mt-1 w-full px-3 py-2"
@@ -183,10 +296,10 @@ export default function ClientSatisfaction(props: { clientId: string }) {
                 />
               </div>
               <div>
-                <div className="text-sm opacity-80">Score (1..5)</div>
+                <div className="text-sm" style={{ color: ui.c.muted }}>Score (1..5)</div>
                 <select
                   className="mt-1 w-full px-3 py-2"
-                  style={ui.inputStyle}
+                  style={{ ...ui.inputStyle, backgroundColor: ui.c.bg, color: ui.c.text }}
                   value={String(form.score)}
                   onChange={(e) => setForm((s) => ({ ...s, score: Number(e.target.value) }))}
                   disabled={busy}
@@ -199,7 +312,7 @@ export default function ClientSatisfaction(props: { clientId: string }) {
                 </select>
               </div>
               <div>
-                <div className="text-sm opacity-80">Catégorie</div>
+                <div className="text-sm" style={{ color: ui.c.muted }}>Categorie</div>
                 <input
                   className="mt-1 w-full px-3 py-2"
                   style={ui.inputStyle}
@@ -209,7 +322,7 @@ export default function ClientSatisfaction(props: { clientId: string }) {
                 />
               </div>
               <div>
-                <div className="text-sm opacity-80">Source</div>
+                <div className="text-sm" style={{ color: ui.c.muted }}>Source</div>
                 <input
                   className="mt-1 w-full px-3 py-2"
                   style={ui.inputStyle}
@@ -218,8 +331,8 @@ export default function ClientSatisfaction(props: { clientId: string }) {
                   disabled={busy}
                 />
               </div>
-              <div className="sm:col-span-2">
-                <div className="text-sm opacity-80">Commentaire</div>
+              <div>
+                <div className="text-sm" style={{ color: ui.c.muted }}>Commentaire</div>
                 <textarea
                   className="mt-1 w-full px-3 py-2 min-h-[110px]"
                   style={ui.inputStyle}
@@ -228,24 +341,40 @@ export default function ClientSatisfaction(props: { clientId: string }) {
                   disabled={busy}
                 />
               </div>
-            </div>
-
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                className="px-4 py-2 text-sm font-semibold"
-                style={ui.btnPrimaryStyle}
-                onClick={() => void add()}
-                disabled={busy}
-              >
-                {busy ? 'Ajout...' : 'Ajouter'}
-              </button>
+              <div className="flex justify-end gap-2">
+                {editId ? (
+                  <button type="button" className="px-4 py-2 text-sm" style={ui.btnStyle} onClick={cancelEdit} disabled={busy}>
+                    Annuler
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="px-4 py-2 text-sm font-semibold"
+                  style={ui.btnPrimaryStyle}
+                  onClick={() => void addOrUpdate()}
+                  disabled={busy}
+                >
+                  {busy ? 'Enregistrement...' : editId ? 'Mettre a jour' : 'Ajouter'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {loading ? <div className="mt-4 text-sm opacity-80">Chargement...</div> : null}
+          {error ? <div className="text-sm" style={{ color: ui.c.danger }}>{error}</div> : null}
+        </div>
       </div>
+
+      {loading ? <div className="mt-3 text-sm" style={{ color: ui.c.muted }}>Chargement...</div> : null}
+    </div>
+  );
+}
+
+function KpiCard({ title, value, accent }: { title: string; value: string; accent: string }) {
+  const ui = useClientUi();
+  return (
+    <div className="p-4 rounded-xl" style={{ backgroundColor: ui.c.card, border: `1px solid ${ui.c.border}` }}>
+      <div className="text-xs" style={{ color: ui.c.muted }}>{title}</div>
+      <div className="mt-2 text-2xl font-semibold" style={{ color: accent }}>{value}</div>
     </div>
   );
 }

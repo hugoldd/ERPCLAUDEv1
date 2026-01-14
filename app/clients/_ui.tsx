@@ -16,13 +16,16 @@ export function useClientUi() {
     const warning = colors.warning ?? '#f59e0b';
     const danger = colors.danger ?? '#ef4444';
     const muted = colors.muted ?? 'rgba(229,231,235,0.75)';
+    const cardHover = colors.cardHover ?? card;
+    const editBg = accent;
 
     return {
-      c: { bg, card, text, border, accent, success, warning, danger, muted },
+      c: { bg, card, text, border, accent, success, warning, danger, muted, cardHover },
       cardStyle: { backgroundColor: card, border: `1px solid ${border}`, borderRadius: 16 } as React.CSSProperties,
       inputStyle: { border: `1px solid ${border}`, borderRadius: 12, backgroundColor: 'transparent' } as React.CSSProperties,
       btnStyle: { border: `1px solid ${border}`, borderRadius: 12 } as React.CSSProperties,
-      btnPrimaryStyle: { backgroundColor: accent, borderRadius: 12 } as React.CSSProperties
+      btnPrimaryStyle: { backgroundColor: accent, borderRadius: 12 } as React.CSSProperties,
+      editBg
     };
   }, [colors]);
 }
@@ -98,7 +101,7 @@ export function ConfirmModal(props: {
   const cancelLabel = props.cancelLabel ?? 'Annuler';
 
   return (
-    <AnyModal isOpen={props.open} onClose={props.onClose} title={props.title}>
+    <AnyModal open={props.open} onClose={props.onClose} title={props.title}>
       <div className="text-sm opacity-90">{props.message}</div>
       <div className="mt-4 flex justify-end gap-2">
         <button type="button" className="px-4 py-2 text-sm" style={ui.btnStyle} onClick={props.onClose} disabled={props.busy}>

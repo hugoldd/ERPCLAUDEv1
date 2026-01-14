@@ -1,6 +1,6 @@
-'use client';
+﻿'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
 import { useTheme } from '@/context/ThemeContext';
@@ -17,6 +17,8 @@ export default function NouvelleNotePage() {
   }, [params]);
 
   const [contenu, setContenu] = useState('');
+  const [tagsInput, setTagsInput] = useState('');
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,6 +40,57 @@ export default function NouvelleNotePage() {
     } as const;
   }, [colors]);
 
+  useEffect(() => {
+    if (!clientId) return;
+
+    const loadSuggestedTags = async () => {
+      try {
+        const { data: notes, error: e1 } = await supabase
+          .from('notes_clients')
+          .select('id')
+          .eq('client_id', clientId);
+        if (e1) throw e1;
+        const ids = (notes ?? []).map((n: { id?: string }) => n.id).filter(Boolean) as string[];
+        if (ids.length === 0) {
+          setSuggestedTags([]);
+          return;
+        }
+        const { data: tags, error: e2 } = await supabase
+          .from('notes_clients_tags')
+          .select('tag')
+          .in('note_id', ids);
+        if (e2) throw e2;
+        const counts: Record<string, number> = {};
+        for (const row of tags ?? []) {
+          const tag = String((row as { tag?: string }).tag ?? '').trim();
+          if (!tag) continue;
+          counts[tag] = (counts[tag] ?? 0) + 1;
+        }
+        const sorted = Object.entries(counts)
+          .sort((a, b) => b[1] - a[1])
+          .map(([tag]) => tag)
+          .slice(0, 8);
+        setSuggestedTags(sorted);
+      } catch {
+        setSuggestedTags([]);
+      }
+    };
+
+    void loadSuggestedTags();
+  }, [clientId]);
+
+  const addSuggestedTag = (tag: string) => {
+    setTagsInput((prev) => {
+      const parts = prev
+        .split(',')
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0);
+      const exists = parts.some((part) => part.toLowerCase() === tag.toLowerCase());
+      if (exists) return prev;
+      return parts.length > 0 ? `${parts.join(', ')}, ${tag}` : tag;
+    });
+  };
+
   const submit = async () => {
     setError(null);
     if (!clientId) {
@@ -52,15 +105,30 @@ export default function NouvelleNotePage() {
     setLoading(true);
     try {
       const payload = { client_id: clientId, contenu: contenu.trim() };
-      const { error: e1 } = await supabase.from('notes_clients').insert(payload);
+      const { data: inserted, error: e1 } = await supabase
+        .from('notes_clients')
+        .insert(payload)
+        .select('id')
+        .single();
       if (e1) throw e1;
+
+      const tags = tagsInput
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0);
+
+      if (tags.length > 0 && inserted?.id) {
+        const rows = tags.map((tag) => ({ note_id: inserted.id, tag }));
+        const { error: e2 } = await supabase.from('notes_clients_tags').insert(rows);
+        if (e2) throw e2;
+      }
 
       await supabase.from('client_activity_events').insert({
         client_id: clientId,
         type_event: 'note',
-        titre: 'Note ajoutée',
+        titre: 'Note ajoutee',
         description: contenu.trim().slice(0, 120),
-        metadata: payload
+        metadata: { ...payload, tags }
       });
 
       router.push(`/clients/${clientId}?tab=notes`);
@@ -87,7 +155,7 @@ export default function NouvelleNotePage() {
               style={styles.btn}
               onClick={() => router.push(`/clients/${clientId}`)}
             >
-              ← Retour
+              Retour
             </button>
           </div>
 
@@ -108,6 +176,33 @@ export default function NouvelleNotePage() {
             />
           </div>
 
+          <div className="mt-4">
+            <div className="text-sm opacity-80">Tags (separes par des virgules)</div>
+            <input
+              className="mt-1 w-full px-3 py-2"
+              style={styles.input}
+              value={tagsInput}
+              onChange={(e) => setTagsInput(e.target.value)}
+              disabled={loading}
+            />
+            {suggestedTags.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {suggestedTags.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    className="px-2 py-1 text-xs rounded-full"
+                    style={{ border: `1px solid ${colors.border}`, color: colors.textSecondary }}
+                    onClick={() => addSuggestedTag(tag)}
+                    disabled={loading}
+                  >
+                    #{tag}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
           <div className="mt-4 flex gap-2 justify-end">
             <button
               type="button"
@@ -125,7 +220,7 @@ export default function NouvelleNotePage() {
               onClick={submit}
               disabled={loading}
             >
-              {loading ? 'Création...' : 'Créer'}
+              {loading ? 'Creation...' : 'Creer'}
             </button>
           </div>
         </div>

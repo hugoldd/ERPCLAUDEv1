@@ -154,6 +154,17 @@ export interface ClientNote {
 }
 
 /* =========================
+   Table: notes_clients_tags
+   ========================= */
+
+export interface ClientNoteTag {
+  id: string;
+  note_id: string;
+  tag: string;
+  created_at: ISODateString;
+}
+
+/* =========================
    Table: client_documents
    ========================= */
 
