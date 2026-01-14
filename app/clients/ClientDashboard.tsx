@@ -125,7 +125,7 @@ export default function ClientDashboard(props: { clientId: string; onOpenAlertes
                   <XAxis dataKey="month" stroke={ui.c.muted} />
                   <YAxis stroke={ui.c.muted} tickFormatter={(value) => `${Math.round(value / 1000)}k`} />
                   <Tooltip
-                    formatter={(value: number) => formatCurrencyEUR(value)}
+                    formatter={(value) => formatCurrencyEUR(typeof value === 'number' ? value : 0)}
                     contentStyle={{ backgroundColor: ui.c.card, border: `1px solid ${ui.c.border}` }}
                   />
                   <Line type="monotone" dataKey="value" stroke={ui.c.accent} strokeWidth={3} dot={{ fill: ui.c.accent, r: 3 }} />
