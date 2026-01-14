@@ -1,37 +1,16 @@
 /* =========================================================
-   types/clients.ts
+   ./types/clients.ts
    Contrats TypeScript partagés – Module Fiches Clients
-   (Aligné sur les imports/champs attendus par vos composants)
+   Aligné sur VOS tables Supabase réelles (schéma fourni)
    ========================================================= */
-
-/* =========================
-   Utilitaires
-   ========================= */
 
 export type ISODateString = string;
 
 /* =========================
-   Enums / Unions
-   ========================= */
-
-export type ClientStatut = 'actif' | 'prospect' | 'inactif';
-
-export type ClientAlerteNiveau = 'info' | 'success' | 'warning' | 'danger' | 'critique';
-
-export type ClientActivityEventType =
-  | 'creation'
-  | 'mise_a_jour'
-  | 'contact'
-  | 'projet'
-  | 'commande'
-  | 'note'
-  | 'document'
-  | 'finance'
-  | 'alerte';
-
-/* =========================
    Table: clients
    ========================= */
+
+export type ClientStatut = 'actif' | 'inactif' | 'prospect';
 
 export interface Client {
   id: string;
@@ -47,11 +26,11 @@ export interface Client {
   notes_libres?: string | null;
   statut: ClientStatut;
   created_at: ISODateString;
-  updated_at?: ISODateString | null;
+  updated_at: ISODateString;
 }
 
 /* =========================
-   Contacts
+   Table: contacts_clients
    ========================= */
 
 export interface ClientContact {
@@ -63,95 +42,161 @@ export interface ClientContact {
   email?: string | null;
   telephone?: string | null;
   principal: boolean;
-
-  /* Vos composants utilisent "notes" */
   notes?: string | null;
-
   created_at: ISODateString;
 }
 
 /* =========================
-   Projets (alias attendu: Projet)
+   Table: commandes
    ========================= */
 
-export type ProjetStatut = 'brouillon' | 'en_cours' | 'termine' | 'annule';
-
-export interface Projet {
-  id: string;
-  client_id: string;
-  nom: string;
-  description?: string | null;
-  statut: ProjetStatut | string;
-  date_debut?: ISODateString | null;
-  date_fin?: ISODateString | null;
-  created_at: ISODateString;
-}
-
-/* =========================
-   Commandes (alias attendu: Commande)
-   ========================= */
-
-export type CommandeStatut = 'brouillon' | 'validee' | 'en_cours' | 'terminee' | 'annulee';
+export type CommandeStatut = 'recue' | 'transformee' | 'annulee';
 
 export interface Commande {
   id: string;
-  client_id: string;
-  reference?: string | null;
-  statut: CommandeStatut | string;
+  client_id?: string | null;
+  numero_commande: string;
+  date_commande: ISODateString; // date => string côté JS
   montant_total?: number | null;
+  statut: CommandeStatut;
+  source?: string | null;
+  data_salesforce?: Record<string, unknown> | null;
   created_at: ISODateString;
 }
 
 /* =========================
-   Notes & Documents
-   - vos composants demandent aussi "ClientDocument"
+   Table: prestations
+   (liées aux commandes)
    ========================= */
 
-export type ClientNoteType = 'note' | 'document';
+export type PrestationType =
+  | 'logiciel'
+  | 'maintenance'
+  | 'licence'
+  | 'formation'
+  | 'assistance';
+
+export interface Prestation {
+  id: string;
+  commande_id?: string | null;
+  code_prestation: string;
+  type_prestation?: PrestationType | null;
+  libelle: string;
+  quantite?: number | null;
+  prix_unitaire?: number | null;
+  montant_total?: number | null;
+  couleur_code?: string | null;
+  notes?: string | null;
+  created_at: ISODateString;
+}
+
+/* =========================
+   Table: projets
+   ========================= */
+
+export type ProjetStatut =
+  | 'bannette'
+  | 'affecte'
+  | 'en_cours'
+  | 'termine'
+  | 'cloture';
+
+export type ProjetPriorite = 'basse' | 'normale' | 'haute' | 'urgente';
+
+export interface Projet {
+  id: string;
+  numero_projet: string;
+  commande_id?: string | null;
+  client_id?: string | null;
+  titre: string;
+  description?: string | null;
+  dp_affecte_id?: string | null;
+
+  statut: ProjetStatut;
+  date_creation?: ISODateString | null;
+  date_affectation?: ISODateString | null;
+  date_debut_prevue?: ISODateString | null;
+  date_fin_prevue?: ISODateString | null;
+  date_cloture?: ISODateString | null;
+
+  priorite?: ProjetPriorite | null;
+  budget_total?: number | null;
+  notes_affectation?: string | null;
+
+  created_at: ISODateString;
+  updated_at: ISODateString;
+
+  // champs additionnels présents dans votre table projets
+  charge_totale_estimee_jours?: number | null;
+  complexite?: string | null;
+  type_intervention?: string | null;
+  ratio_hybride?: Record<string, unknown> | null;
+  consultant_impose_id?: string | null;
+  consultant_prefere_id?: string | null;
+  periodes_interdites?: Record<string, unknown> | null;
+  periodes_forte_activite?: Record<string, unknown> | null;
+  necessite_connaissance_org?: boolean | null;
+  domaine_metier?: string | null;
+  continuite_requise?: boolean | null;
+  delai_demarrage?: string | null;
+}
+
+/* =========================
+   Table: notes_clients
+   ========================= */
 
 export interface ClientNote {
   id: string;
-  client_id: string;
-  titre?: string | null;
+  client_id?: string | null;
   contenu: string;
-  type?: ClientNoteType | null;
-  fichier_url?: string | null;
   created_at: ISODateString;
+  updated_at: ISODateString;
 }
+
+/* =========================
+   Table: client_documents
+   ========================= */
+
+export type ClientDocumentStatut =
+  | 'simule'
+  | 'upload_en_cours'
+  | 'upload_ok'
+  | 'upload_ko';
 
 export interface ClientDocument {
   id: string;
   client_id: string;
   nom: string;
+  type_mime?: string | null;
+  taille_octets?: number | null;
   url?: string | null;
-  mime_type?: string | null;
-  taille?: number | null;
+  statut: ClientDocumentStatut;
+  tags: string[];
   created_at: ISODateString;
+  updated_at: ISODateString;
 }
 
 /* =========================
-   Alertes
-   - vos composants utilisent: actif, niveau, date_echeance
+   Table: client_alertes
    ========================= */
+
+export type ClientAlerteNiveau = 'info' | 'warning' | 'danger';
 
 export interface ClientAlerte {
   id: string;
   client_id: string;
-  titre: string;
-  message: string;
-
-  /* Champs attendus par vos composants */
-  actif: boolean;
   niveau: ClientAlerteNiveau;
+  titre: string;
+  message?: string | null;
+  actif: boolean;
   date_echeance?: ISODateString | null;
-
-  created_at: ISODateString;
   resolved_at?: ISODateString | null;
+  created_at: ISODateString;
+  updated_at: ISODateString;
 }
 
 /* =========================
-   Satisfaction
-   - vos composants importent "ClientSatisfactionEvaluation"
+   Table: client_satisfaction_evaluations
    ========================= */
 
 export type SatisfactionScore = 1 | 2 | 3 | 4 | 5;
@@ -159,53 +204,91 @@ export type SatisfactionScore = 1 | 2 | 3 | 4 | 5;
 export interface ClientSatisfactionEvaluation {
   id: string;
   client_id: string;
+  date_evaluation: ISODateString;
   score: SatisfactionScore;
+  categorie?: string | null;
   commentaire?: string | null;
+  source?: string | null;
   created_at: ISODateString;
 }
 
 /* =========================
-   Finance
-   - vos composants importent: ClientInvoice, ClientPayment
+   Tables: client_finance_invoices / client_finance_payments
    ========================= */
 
-export type InvoiceStatut = 'brouillon' | 'emise' | 'payee' | 'en_retard' | 'annulee';
-export type PaymentMode = 'virement' | 'cb' | 'cheque' | 'especes' | 'autre';
+export type InvoiceStatut =
+  | 'brouillon'
+  | 'emise'
+  | 'payee'
+  | 'en_retard'
+  | 'annulee';
 
 export interface ClientInvoice {
   id: string;
   client_id: string;
-  reference?: string | null;
-  statut: InvoiceStatut | string;
+  numero: string;
+  date_emission: ISODateString;
+  date_echeance?: ISODateString | null;
   montant_ht?: number | null;
   montant_ttc?: number | null;
-  date_emission?: ISODateString | null;
-  date_echeance?: ISODateString | null;
+  devise?: string | null;
+  statut: InvoiceStatut;
+  notes?: string | null;
   created_at: ISODateString;
+  updated_at: ISODateString;
 }
 
 export interface ClientPayment {
   id: string;
   client_id: string;
   invoice_id?: string | null;
+  date_paiement: ISODateString;
   montant: number;
-  mode?: PaymentMode | string | null;
-  date_paiement?: ISODateString | null;
+  mode?: string | null;
+  reference?: string | null;
   created_at: ISODateString;
 }
 
 /* =========================
-   Timeline / Activité
-   - vos composants importent: ClientActivityEvent(+Type)
+   Table: client_kpi_snapshots
    ========================= */
+
+export interface ClientKpiSnapshot {
+  id: string;
+  client_id: string;
+  periode_mois: ISODateString;
+  ca_ttc?: number | null;
+  marge?: number | null;
+  nps?: number | null;
+  satisfaction_moyenne?: number | null;
+  nb_projets_actifs?: number | null;
+  nb_commandes?: number | null;
+  created_at: ISODateString;
+}
+
+/* =========================
+   Table: client_activity_events
+   ========================= */
+
+export type ClientActivityEventType =
+  | 'note'
+  | 'contact'
+  | 'commande'
+  | 'projet'
+  | 'finance'
+  | 'alerte'
+  | 'document'
+  | 'system';
 
 export interface ClientActivityEvent {
   id: string;
   client_id: string;
-  type: ClientActivityEventType;
-  label: string;
+  type_event: ClientActivityEventType;
+  titre: string;
   description?: string | null;
+  metadata?: Record<string, unknown> | null;
   created_at: ISODateString;
+  created_by?: string | null;
 }
 
 /* =========================
